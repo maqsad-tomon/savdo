@@ -2,14 +2,31 @@
 <html lang="uz">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Do'konlar Nazorati — Savdo & Monitoring Tizimi</title>
+  
+  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Google Firebase (Bepul Onlayn Bulutli Baza) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-    body, html { width: 100%; height: 100%; overflow: hidden; background: #0f172a; }
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      -webkit-tap-highlight-color: transparent; 
+    }
+    body, html { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden; 
+      background: #0f172a; 
+    }
 
     #app-container {
       position: relative;
@@ -28,46 +45,90 @@
     }
 
     /* Telefon uchun yuqori tezkor panel */
-    .top-bar {
+    .top-bar-wrapper {
       position: absolute;
-      top: 12px;
-      left: 12px;
-      right: 12px;
+      top: 14px;
+      left: 14px;
+      right: 14px;
       z-index: 1000;
       display: flex;
+      flex-direction: column;
       gap: 8px;
+    }
+    .top-bar {
+      display: flex;
+      gap: 10px;
     }
     .top-btn {
       flex: 1;
-      background: rgba(15, 23, 42, 0.92);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.18);
-      backdrop-filter: blur(10px);
-      padding: 10px 12px;
-      border-radius: 12px;
-      font-size: 0.8rem;
+      background: rgba(15, 23, 42, 0.88);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 0.82rem;
       font-weight: 600;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
+      transition: transform 0.15s ease;
     }
-    .top-btn:active { transform: scale(0.97); }
+    .top-btn:active { transform: scale(0.96); }
+    .top-btn svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
 
-    /* Pastki menyu paneli */
+    /* Bulutli baza holati indikatori (Pill) */
+    .cloud-status-pill {
+      align-self: center;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    .cloud-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+    .cloud-status-pill.online .cloud-status-dot {
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    .cloud-status-pill.syncing .cloud-status-dot {
+      background: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b;
+    }
+
+    /* Pastki menyu paneli (Bottom Navigation) - Mutlaqo bir tekis va tartibli */
     .bottom-nav {
       position: absolute;
       bottom: 0;
       left: 0;
       right: 0;
-      height: 62px;
+      height: 60px;
+      padding-bottom: max(6px, env(safe-area-inset-bottom));
+      box-sizing: content-box;
       background: #ffffff;
       border-top: 1px solid #e2e8f0;
       display: flex;
+      align-items: stretch;
       z-index: 1000;
-      box-shadow: 0 -3px 15px rgba(0,0,0,0.08);
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
     }
     .nav-btn {
       flex: 1;
@@ -78,25 +139,71 @@
       border: none;
       background: transparent;
       color: #64748b;
-      font-size: 0.72rem;
-      font-weight: 600;
-      gap: 2px;
       cursor: pointer;
+      text-decoration: none;
+      padding: 6px 2px;
+      user-select: none;
+      transition: color 0.15s ease;
     }
     .nav-btn.active { color: #2563eb; }
-    .nav-btn span.icon { font-size: 1.25rem; }
+    .nav-btn.active .nav-icon svg { stroke: #2563eb; }
 
-    /* Pastdan ko'tariluvchi modallar */
+    .nav-icon {
+      position: relative;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 3px;
+    }
+    .nav-icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: #64748b;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      transition: stroke 0.15s ease;
+    }
+    .nav-badge {
+      position: absolute;
+      top: -4px;
+      right: -9px;
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 10px;
+      min-width: 17px;
+      height: 17px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .nav-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      line-height: 1.1;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    /* Modallar (Sheets) */
     .sheet-modal {
       position: absolute;
       left: 0;
       right: 0;
-      bottom: -105%;
-      height: 85vh;
+      bottom: -110%;
+      height: 84vh;
       background: #ffffff;
-      border-radius: 20px 20px 0 0;
+      border-radius: 24px 24px 0 0;
       z-index: 1500;
-      box-shadow: 0 -6px 30px rgba(0,0,0,0.35);
+      box-shadow: 0 -8px 35px rgba(0, 0, 0, 0.35);
       display: flex;
       flex-direction: column;
       transition: bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -104,22 +211,51 @@
     .sheet-modal.open { bottom: 0; }
 
     .sheet-header {
-      padding: 14px 18px;
-      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 18px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      position: relative;
+    }
+    .sheet-grabber {
+      width: 40px;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+    .sheet-header-title-row {
+      width: 100%;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #f8fafc;
-      border-radius: 20px 20px 0 0;
     }
-    .sheet-header h3 { font-size: 1rem; color: #0f172a; font-weight: 700; }
-    .close-btn { background: #e2e8f0; border: none; border-radius: 50%; width: 32px; height: 32px; font-weight: 700; cursor: pointer; color: #334155; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .sheet-header h3 { font-size: 1.05rem; color: #0f172a; font-weight: 700; }
+    .close-btn { 
+      background: #f1f5f9; 
+      border: none; 
+      border-radius: 50%; 
+      width: 32px; 
+      height: 32px; 
+      font-weight: 700; 
+      cursor: pointer; 
+      color: #64748b; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-size: 1rem; 
+      transition: background 0.15s;
+    }
+    .close-btn:active { background: #e2e8f0; }
 
     .sheet-content {
       padding: 16px;
       overflow-y: auto;
       flex: 1;
-      padding-bottom: 80px;
+      padding-bottom: 90px;
     }
 
     /* Statistika bloki */
@@ -131,18 +267,21 @@
     }
     .stat-card {
       padding: 8px 4px;
-      border-radius: 10px;
+      border-radius: 12px;
       text-align: center;
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: 600;
-      color: #fff;
+      color: #ffffff;
       cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      transition: transform 0.1s;
     }
-    .stat-card .num { font-size: 1.15rem; font-weight: 800; display: block; margin-bottom: 2px; }
-    .stat-red { background: #ef4444; }
-    .stat-yellow { background: #f59e0b; }
-    .stat-green { background: #10b981; }
-    .stat-blue { background: #3b82f6; }
+    .stat-card:active { transform: scale(0.96); }
+    .stat-card .num { font-size: 1.2rem; font-weight: 800; display: block; margin-bottom: 1px; }
+    .stat-red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .stat-yellow { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-green { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
 
     /* Qidiruv va Filtrlar */
     .search-box {
@@ -150,99 +289,268 @@
     }
     .search-box input {
       width: 100%;
-      padding: 10px 14px;
-      border: 1.5px solid #cbd5e1;
-      border-radius: 10px;
+      padding: 11px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
       font-size: 0.88rem;
       outline: none;
       background: #f8fafc;
+      transition: all 0.2s;
     }
-    .search-box input:focus { border-color: #2563eb; background: #fff; }
+    .search-box input:focus { border-color: #2563eb; background: #ffffff; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
 
     .filter-chips {
       display: flex;
       gap: 6px;
       overflow-x: auto;
-      padding-bottom: 8px;
-      margin-bottom: 10px;
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+      -webkit-overflow-scrolling: touch;
     }
+    .filter-chips::-webkit-scrollbar { display: none; }
     .chip {
-      padding: 6px 12px;
+      padding: 7px 12px;
       border-radius: 20px;
-      border: 1px solid #cbd5e1;
-      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
       color: #475569;
-      font-size: 0.72rem;
+      font-size: 0.74rem;
       font-weight: 600;
       white-space: nowrap;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
     }
-    .chip.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+    .chip.active { background: #0f172a; color: #ffffff; border-color: #0f172a; }
 
     /* Formalar */
     .input-group { margin-bottom: 12px; }
     .input-group label { display: block; font-size: 0.78rem; font-weight: 600; color: #475569; margin-bottom: 5px; }
     .input-group input, .input-group select, .input-group textarea {
-      width: 100%; padding: 11px 12px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 0.9rem; outline: none; background: #fff;
+      width: 100%; padding: 11px 12px; border: 1.5px solid #cbd5e1; border-radius: 12px; font-size: 0.9rem; outline: none; background: #ffffff; color: #0f172a;
     }
     .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: #2563eb; }
     .row-inputs { display: flex; gap: 8px; }
 
     .btn-submit {
-      width: 100%; padding: 12px; border: none; border-radius: 10px; font-size: 0.92rem; font-weight: 700; cursor: pointer; background: #2563eb; color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+      width: 100%; padding: 13px; border: none; border-radius: 12px; font-size: 0.92rem; font-weight: 700; cursor: pointer; background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37,99,235,0.3);
     }
     .btn-submit:active { transform: scale(0.98); }
 
     /* Ro'yxat kartochkalari */
     .shop-list { display: flex; flex-direction: column; gap: 8px; }
     .shop-card {
-      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; border-left: 6px solid #cbd5e1; box-shadow: 0 2px 6px rgba(0,0,0,0.03); cursor: pointer;
+      background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; border-left: 6px solid #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.03); cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
     }
+    .shop-card:active { transform: scale(0.98); background: #f8fafc; }
     .shop-card.green { border-left-color: #10b981; }
     .shop-card.yellow { border-left-color: #f59e0b; }
     .shop-card.red { border-left-color: #ef4444; }
     .shop-card.blue { border-left-color: #3b82f6; }
     
-    .shop-card-title { font-weight: 700; font-size: 0.92rem; color: #0f172a; display: flex; justify-content: space-between; align-items: center; }
+    .shop-card-title { font-weight: 700; font-size: 0.94rem; color: #0f172a; display: flex; justify-content: space-between; align-items: center; }
     .shop-card-info { font-size: 0.78rem; color: #334155; margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
-    .shop-card-notes { font-size: 0.74rem; color: #64748b; background: #f8fafc; padding: 4px 8px; border-radius: 6px; margin-top: 4px; border-left: 3px solid #cbd5e1; }
-    .shop-card-meta { font-size: 0.75rem; color: #64748b; margin-top: 5px; font-weight: 600; }
+    .shop-card-notes { font-size: 0.74rem; color: #64748b; background: #f8fafc; padding: 5px 8px; border-radius: 6px; margin-top: 5px; border-left: 3px solid #cbd5e1; }
+    .shop-card-meta { font-size: 0.75rem; color: #64748b; margin-top: 6px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
 
-    /* Popup tugmalari */
-    .popup-actions { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
-    .popup-btn {
-      width: 100%; padding: 8px 10px; border: none; border-radius: 7px; font-size: 0.76rem; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    /* Leaflet Popup dizayni */
+    .leaflet-popup-content-wrapper {
+      border-radius: 18px !important;
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.28) !important;
+      padding: 0 !important;
+      overflow: hidden;
+      border: 1px solid rgba(226, 232, 240, 0.8) !important;
     }
-    .btn-partner { background: #2563eb; color: #fff; }
-    .btn-delivered { background: #10b981; color: #fff; }
-    .btn-cancel { background: #f59e0b; color: #fff; }
-    .btn-call { background: #059669; color: #fff; }
-    .btn-nav-yandex { background: #e11d48; color: #fff; }
-    .btn-nav-google { background: #0284c7; color: #fff; }
-    .btn-contact { background: #6366f1; color: #fff; }
-    .btn-del { background: #ef4444; color: #fff; }
+    .leaflet-popup-content {
+      margin: 0 !important;
+      line-height: 1.4 !important;
+      min-width: 250px !important;
+      max-width: 290px !important;
+    }
+    .leaflet-container a.leaflet-popup-close-button {
+      top: 10px !important;
+      right: 12px !important;
+      color: #64748b !important;
+      font-size: 18px !important;
+      width: 26px !important;
+      height: 26px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border-radius: 50% !important;
+      background: #f1f5f9 !important;
+      padding: 0 !important;
+      z-index: 10 !important;
+    }
+    .leaflet-popup-tip {
+      box-shadow: 0 8px 16px rgba(0,0,0,0.15) !important;
+    }
 
-    .nav-btn-row { display: flex; gap: 4px; }
-    .nav-btn-row .popup-btn { flex: 1; padding: 7px 4px; font-size: 0.72rem; }
+    .shop-popup-card {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #ffffff;
+    }
+    .popup-head {
+      padding-right: 24px;
+    }
+    .popup-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+    .popup-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .badge-blue { background: #eff6ff; color: #1d4ed8; }
+    .badge-green { background: #f0fdf4; color: #15803d; }
+    .badge-yellow { background: #fffbeb; color: #b45309; }
+    .badge-red { background: #fef2f2; color: #b91c1c; }
 
-    /* Zaxira (Backup) bo'limi uslublari */
+    .popup-info-box {
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      color: #334155;
+    }
+    .popup-info-box b { color: #0f172a; }
+    .popup-info-link { color: #2563eb; text-decoration: none; font-weight: 600; }
+
+    .popup-actions-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .popup-btn-row {
+      display: flex;
+      gap: 6px;
+    }
+    .p-btn {
+      flex: 1;
+      padding: 9px 10px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none !important;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border: none;
+      transition: all 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .p-btn:active { transform: scale(0.97); opacity: 0.9; }
+
+    .p-btn-call {
+      background: #16a34a !important;
+      color: #ffffff !important;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+    }
+    .p-btn-call:visited, .p-btn-call:hover { color: #ffffff !important; }
+
+    .p-btn-yandex {
+      background: #f43f5e !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 6px rgba(244, 63, 94, 0.2);
+    }
+    .p-btn-yandex:visited, .p-btn-yandex:hover { color: #ffffff !important; }
+
+    .p-btn-google {
+      background: #0ea5e9 !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 6px rgba(14, 165, 233, 0.2);
+    }
+    .p-btn-google:visited, .p-btn-google:hover { color: #ffffff !important; }
+
+    .p-btn-status-lead {
+      background: #2563eb !important;
+      color: #ffffff !important;
+      font-weight: 600;
+    }
+    .p-btn-status-done {
+      background: #0d9488 !important;
+      color: #ffffff !important;
+      font-weight: 600;
+    }
+    .p-btn-status-revert {
+      background: #f59e0b !important;
+      color: #ffffff !important;
+      font-weight: 600;
+    }
+
+    .p-btn-edit {
+      background: #f1f5f9 !important;
+      color: #334155 !important;
+      border: 1px solid #cbd5e1 !important;
+    }
+    .p-btn-del {
+      background: #fef2f2 !important;
+      color: #dc2626 !important;
+      border: 1px solid #fecaca !important;
+    }
+
+    /* Zaxira & Baza bo'limi uslublari */
     .backup-section {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 14px;
       margin-bottom: 14px;
     }
-    .backup-section h4 { font-size: 0.88rem; color: #0f172a; margin-bottom: 6px; }
-    .backup-section p { font-size: 0.75rem; color: #64748b; margin-bottom: 10px; }
+    .backup-section h4 { font-size: 0.9rem; color: #0f172a; margin-bottom: 5px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; }
+    .backup-section p { font-size: 0.76rem; color: #64748b; margin-bottom: 12px; line-height: 1.4; }
+    
+    .status-badge-inline {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .status-badge-inline.connected { background: #dcfce7; color: #166534; }
+    .status-badge-inline.disconnected { background: #f1f5f9; color: #64748b; }
+
     .btn-action-alt {
-      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; font-weight: 600; font-size: 0.82rem; cursor: pointer; color: #0f172a; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px;
+      width: 100%; padding: 11px; border-radius: 10px; border: 1px solid #cbd5e1; background: #ffffff; font-weight: 600; font-size: 0.84rem; cursor: pointer; color: #0f172a; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;
     }
     .btn-action-alt:active { background: #f1f5f9; }
 
-    /* Maxsus markerlar */
+    .cloud-instruction {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 0.74rem;
+      color: #1e40af;
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+    .cloud-instruction ol { margin-left: 16px; margin-top: 4px; }
+    .cloud-instruction li { margin-bottom: 3px; }
+
     .custom-marker {
-      width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      width: 22px; height: 22px; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 3px 10px rgba(0,0,0,0.35);
     }
   </style>
 </head>
@@ -250,32 +558,72 @@
 
   <div id="app-container">
     
-    <!-- Yuqori tezkor qidiruv & GPS paneli -->
-    <div class="top-bar">
-      <button class="top-btn" onclick="locateMe()">📍 Joylashuvim</button>
-      <button class="top-btn" id="findShopsBtn" onclick="fetchNearbyShops()">🔍 Atrofdagi do'konlar</button>
+    <!-- Yuqori tezkor qidiruv, GPS & Baza holati paneli -->
+    <div class="top-bar-wrapper">
+      <div class="top-bar">
+        <button class="top-btn" onclick="locateMe()">
+          <svg viewBox="0 0 24 24"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
+          Joylashuvim
+        </button>
+        <button class="top-btn" id="findShopsBtn" onclick="fetchNearbyShops()">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Atrofdagi do'konlar
+        </button>
+      </div>
+
+      <!-- Bulutli baza holati ko'rsatkichi -->
+      <div class="cloud-status-pill" id="cloudStatusPill" onclick="openSheet('backupSheet')">
+        <span class="cloud-status-dot"></span>
+        <span id="cloudStatusText">📱 Lokal rejim (Bulutga ulash)</span>
+      </div>
     </div>
 
     <!-- Xarita -->
     <div id="map"></div>
 
-    <!-- Pastki menyu paneli -->
+    <!-- Pastki menyu paneli (Mutlaqo bir tekis va tartibli) -->
     <div class="bottom-nav">
-      <button class="nav-btn active" id="btnNavMap" onclick="closeAllSheets()"><span class="icon">🗺</span>Xarita</button>
-      <button class="nav-btn" id="btnNavList" onclick="openSheet('listSheet')"><span class="icon">📋</span>Ro'yxat (<span id="count">0</span>)</button>
-      <button class="nav-btn" id="btnNavAdd" onclick="openAddModal()"><span class="icon">➕</span>Do'kon</button>
-      <button class="nav-btn" id="btnNavBackup" onclick="openSheet('backupSheet')"><span class="icon">💾</span>Zaxira</button>
+      <button class="nav-btn active" id="btnNavMap" onclick="closeAllSheets()">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        </div>
+        <span class="nav-label">Xarita</span>
+      </button>
+
+      <button class="nav-btn" id="btnNavList" onclick="openSheet('listSheet')">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+          <span class="nav-badge" id="count">0</span>
+        </div>
+        <span class="nav-label">Ro'yxat</span>
+      </button>
+
+      <button class="nav-btn" id="btnNavAdd" onclick="openAddModal()">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        </div>
+        <span class="nav-label">Qo'shish</span>
+      </button>
+
+      <button class="nav-btn" id="btnNavBackup" onclick="openSheet('backupSheet')">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        </div>
+        <span class="nav-label">Baza & Zaxira</span>
+      </button>
     </div>
 
     <!-- Do'konlar ro'yxati modali -->
     <div class="sheet-modal" id="listSheet">
       <div class="sheet-header">
-        <h3>Mening Do'konlarim (<span id="listTotalCount">0</span>)</h3>
-        <button class="close-btn" onclick="closeAllSheets()">✕</button>
+        <div class="sheet-grabber"></div>
+        <div class="sheet-header-title-row">
+          <h3>Mening Do'konlarim (<span id="listTotalCount">0</span>)</h3>
+          <button class="close-btn" onclick="closeAllSheets()">✕</button>
+        </div>
       </div>
       <div class="sheet-content">
         
-        <!-- Bugungi holat statistikasi -->
         <div class="stats-grid">
           <div class="stat-card stat-red" onclick="filterByChip('red')">
             <span class="num" id="statRed">0</span>Borish shart
@@ -284,24 +632,22 @@
             <span class="num" id="statYellow">0</span>Muddati yetdi
           </div>
           <div class="stat-card stat-green" onclick="filterByChip('green')">
-            <span class="num" id="statGreen">0</span>Yangi topshirilgan
+            <span class="num" id="statGreen">0</span>Yangi
           </div>
           <div class="stat-card stat-blue" onclick="filterByChip('lead')">
-            <span class="num" id="statBlue">0</span>Shartnoma yo'q
+            <span class="num" id="statBlue">0</span>Rejadagi
           </div>
         </div>
 
-        <!-- Qidiruv satri -->
         <div class="search-box">
-          <input type="text" id="shopSearchInput" placeholder="🔍 Qidiruv (nomi, mas'ul, telefon)..." oninput="render()" />
+          <input type="text" id="shopSearchInput" placeholder="🔍 Do'kon nomi, mas'ul yoki telefon..." oninput="render()" />
         </div>
 
-        <!-- Filtr tugmalari (Chips) -->
         <div class="filter-chips">
           <button class="chip active" onclick="setFilter('all', this)">Barchasi</button>
           <button class="chip" onclick="setFilter('red', this)">🔴 Borish shart</button>
           <button class="chip" onclick="setFilter('yellow', this)">🟡 Muddati yetgan</button>
-          <button class="chip" onclick="setFilter('green', this)">🟢 Yangi</button>
+          <button class="chip" onclick="setFilter('green', this)">🟢 Yangi berilgan</button>
           <button class="chip" onclick="setFilter('lead', this)">🔵 Rejadagi</button>
         </div>
 
@@ -312,8 +658,11 @@
     <!-- Yangi do'kon qo'shish modali -->
     <div class="sheet-modal" id="addSheet">
       <div class="sheet-header">
-        <h3 id="formModalTitle">Yangi Do'kon Qo'shish</h3>
-        <button class="close-btn" onclick="closeAllSheets()">✕</button>
+        <div class="sheet-grabber"></div>
+        <div class="sheet-header-title-row">
+          <h3 id="formModalTitle">Yangi Do'kon Qo'shish</h3>
+          <button class="close-btn" onclick="closeAllSheets()">✕</button>
+        </div>
       </div>
       <div class="sheet-content">
         <div class="input-group">
@@ -335,7 +684,7 @@
         <div class="input-group">
           <label>Hamkorlik holati:</label>
           <select id="shopType" onchange="toggleFormInputs()">
-            <option value="lead">🔵 Shartnoma qilinmagan (Ko'k rangda)</option>
+            <option value="lead">🔵 Shartnoma qilinmagan (Ko'k - Reja)</option>
             <option value="client">🟢 Hamkor do'kon (Mahsulot berilgan)</option>
           </select>
         </div>
@@ -359,7 +708,7 @@
         </div>
 
         <div class="input-group">
-          <label>Qayd / Izoh (Buyurtma, eslatma):</label>
+          <label>Qayd / Izoh (Eslatma, buyurtma):</label>
           <textarea id="shopNotes" rows="2" placeholder="Masalan: 10 blok sok berildi, puli dushanba"></textarea>
         </div>
 
@@ -369,7 +718,7 @@
             <input type="number" step="any" id="lat" placeholder="Kenglik (Lat)" />
             <input type="number" step="any" id="lng" placeholder="Uzunlik (Lng)" />
           </div>
-          <small style="color: #64748b; font-size: 0.72rem; display: block; margin-top: 3px;">Xaritani xohlagan joyiga bossangiz kordinata o'zi tushadi.</small>
+          <small style="color: #64748b; font-size: 0.72rem; display: block; margin-top: 4px;">Xaritani xohlagan joyiga bossangiz kordinata o'zi tushadi.</small>
         </div>
 
         <button class="btn-submit" onclick="saveNewShop()">Saqlash</button>
@@ -379,8 +728,11 @@
     <!-- Do'kon ma'lumotlarini to'liq tahrirlash modali -->
     <div class="sheet-modal" id="editModal">
       <div class="sheet-header">
-        <h3 id="editModalTitle">✏️ Do'konni tahrirlash</h3>
-        <button class="close-btn" onclick="closeAllSheets()">✕</button>
+        <div class="sheet-grabber"></div>
+        <div class="sheet-header-title-row">
+          <h3 id="editModalTitle">✏️ Do'konni tahrirlash</h3>
+          <button class="close-btn" onclick="closeAllSheets()">✕</button>
+        </div>
       </div>
       <div class="sheet-content">
         <input type="hidden" id="editShopId" />
@@ -426,31 +778,66 @@
       </div>
     </div>
 
-    <!-- Zaxira nusxa (Backup) va Sozlamalar modali -->
+    <!-- Baza & Zaxira (Cloud Database & Backup) modali -->
     <div class="sheet-modal" id="backupSheet">
       <div class="sheet-header">
-        <h3>💾 Ma'lumotlar Zaxirasi & Eksport</h3>
-        <button class="close-btn" onclick="closeAllSheets()">✕</button>
+        <div class="sheet-grabber"></div>
+        <div class="sheet-header-title-row">
+          <h3>☁️ Bulutli Baza & Zaxira</h3>
+          <button class="close-btn" onclick="closeAllSheets()">✕</button>
+        </div>
       </div>
       <div class="sheet-content">
         
+        <!-- Bulutli baza sozlamasi kartochkasi -->
+        <div class="backup-section" style="border: 1.5px solid #93c5fd; background: #f0f7ff;">
+          <h4>
+            <span>☁️ Google Firebase Bepul Bazasi</span>
+            <span id="cloudStatusBadge" class="status-badge-inline disconnected">Ulanmagan</span>
+          </h4>
+          <p>
+            Do'konlar internetdagi bepul bazaga avtomatik saqlanadi. Telefon almashtirsangiz ham barcha ma'lumotlar saqlanib turadi va bir vaqtda bir nechta odam ishlashi mumkin.
+          </p>
+
+          <div class="cloud-instruction" id="firebaseGuideBox">
+            <b>Bepul ulash (faqat 1 marta qilinadi):</b>
+            <ol>
+              <li><b>console.firebase.google.com</b> saytiga bepul kiring.</li>
+              <li>"Add project" qilib loyiha yarating.</li>
+              <li><b>Firestore Database</b> bo'limida "Create database" va "Start in test mode" ni tanlang.</li>
+              <li>Loyiha sozlamalarida Web ilova (<code>&lt;/&gt;</code>) qo'shib, <b>firebaseConfig</b> kodini nusxalab quyidagi maydonga joylang:</li>
+            </ol>
+          </div>
+
+          <div class="input-group">
+            <label>Firebase Konfiguratsiya kodi (JSON yoki matn):</label>
+            <textarea id="firebaseConfigInput" rows="4" placeholder='{"apiKey": "AIzaSy...", "projectId": "mening-dokonlarim", ...}'></textarea>
+          </div>
+
+          <div style="display:flex; gap:8px;">
+            <button class="btn-submit" style="flex:1; padding:10px; font-size:0.85rem;" onclick="connectFirebase()">🚀 Ulanish va Sinxronlash</button>
+            <button class="btn-action-alt" style="width:auto; padding:10px; margin-bottom:0;" onclick="disconnectFirebase()">Uzish</button>
+          </div>
+        </div>
+
+        <!-- Faylli Zaxira -->
         <div class="backup-section">
-          <h4>📥 Zaxira nusxa olish (Backup)</h4>
-          <p>Telefon keshini tozalaganda yoki telefon almashtirganda ma'lumotlar yo'qolmasligi uchun zaxira nusxasini saqlab qo'ying.</p>
+          <h4>📥 Faylli Zaxira nusxa olish</h4>
+          <p>Ma'lumotlarni qo'lda fayl qilib yuklab olish (Excel yoki JSON):</p>
           <button class="btn-action-alt" onclick="exportJSON()">💾 JSON Zaxira faylini yuklab olish</button>
           <button class="btn-action-alt" onclick="exportCSV()">📊 Excel (CSV) jadvalini yuklab olish</button>
         </div>
 
         <div class="backup-section">
-          <h4>📤 Zaxirani qayta tiklash (Import)</h4>
-          <p>Oldin saqlangan JSON zaxira faylini tanlab barcha do'konlarni qayta tiklang.</p>
+          <h4>📤 Fayldan qayta tiklash (Import)</h4>
+          <p>Oldin saqlangan JSON zaxira faylini tanlang va do'konlarni qayta tiklang.</p>
           <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="handleFileImport(event)" />
-          <button class="btn-action-alt" style="border-color:#2563eb; color:#2563eb;" onclick="document.getElementById('importFileInput').click()">📂 Zaxira faylini yuklash (JSON)</button>
+          <button class="btn-action-alt" style="border-color:#2563eb; color:#2563eb;" onclick="document.getElementById('importFileInput').click()">📂 Zaxira faylini tanlash (JSON)</button>
         </div>
 
         <div class="backup-section" style="border-color: #fecaca; background: #fff5f5;">
           <h4 style="color:#ef4444;">⚠️ Tozalash</h4>
-          <p>Barcha do'konlar ma'lumotlarini butunlay o'chirish (avval zaxira nusxa olishingiz tavsiya etiladi).</p>
+          <p>Barcha do'konlar ma'lumotlarini o'chirish (avval zaxira nusxa olish tavsiya etiladi).</p>
           <button class="btn-action-alt" style="border-color:#ef4444; color:#ef4444;" onclick="clearAllData()">🗑 Barcha ma'lumotlarni tozalash</button>
         </div>
 
@@ -460,7 +847,9 @@
   </div>
 
   <script>
-    // Xarita - Andijon markazi (GPS orqali o'zingiznikiga moslashadi)
+    // =========================================================================
+    // 1. ASOSIY XARITA VA O'ZGARUVChILAR
+    // =========================================================================
     const map = L.map('map', { zoomControl: false }).setView([40.7821, 72.3442], 14);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -472,6 +861,11 @@
     let osmMarkers = [];
     let shops = JSON.parse(localStorage.getItem('shops_data') || '[]');
     let currentFilter = 'all';
+
+    // Firebase o'zgaruvchilari
+    let db = null;
+    let firebaseUnsubscribe = null;
+    let isFirebaseActive = false;
 
     document.getElementById('deliveryDate').value = new Date().toISOString().split('T')[0];
 
@@ -528,35 +922,289 @@
       openSheet('editModal');
     };
 
+    // =========================================================================
+    // 2. MA'LUMOTLARNI SAQLASH (FIREBASE + LOCALSTORAGE HYBRID)
+    // =========================================================================
+    
+    // Yagona saqlash funksiyasi: ham bulutga, ham telefonga avtomatik yozadi
+    async function syncShopSave(shop) {
+      // 1. Lokal xotiraga yozish (offline kesh)
+      const idx = shops.findIndex(s => s.id === shop.id);
+      if (idx >= 0) shops[idx] = shop;
+      else shops.push(shop);
+      localStorage.setItem('shops_data', JSON.stringify(shops));
+      render();
+
+      // 2. Agar Firebase ulangan bo'lsa, Google bulutiga yozish
+      if (db) {
+        try {
+          updateCloudPill('syncing', 'Bulutga saqlanmoqda...');
+          await db.collection("shops").doc(shop.id).set(shop);
+          updateCloudPill('online', '🟢 Bulutga saqlandi');
+        } catch (err) {
+          console.error("Firebase save error:", err);
+          updateCloudPill('online', '⚠️ Bulutga ulanishda xato');
+        }
+      }
+    }
+
+    // Yagona o'chirish funksiyasi
+    async function syncShopDelete(id) {
+      shops = shops.filter(s => s.id !== id);
+      localStorage.setItem('shops_data', JSON.stringify(shops));
+      render();
+
+      if (db) {
+        try {
+          updateCloudPill('syncing', 'Bulutdan o\'chirilmoqda...');
+          await db.collection("shops").doc(id).delete();
+          updateCloudPill('online', '🟢 Bulutda yangilandi');
+        } catch (err) {
+          console.error("Firebase delete error:", err);
+        }
+      }
+    }
+
+    window.saveNewShop = function() {
+      const name = document.getElementById('shopName').value.trim();
+      const contactName = document.getElementById('contactName').value.trim();
+      const phone = document.getElementById('shopPhone').value.trim();
+      const notes = document.getElementById('shopNotes').value.trim();
+      const type = document.getElementById('shopType').value;
+      const lat = parseFloat(document.getElementById('lat').value);
+      const lng = parseFloat(document.getElementById('lng').value);
+      const deliveryDate = document.getElementById('deliveryDate').value;
+      const yellowDays = parseInt(document.getElementById('yellowDays').value) || 5;
+      const redDays = parseInt(document.getElementById('redDays').value) || 7;
+
+      if (!name || isNaN(lat) || isNaN(lng)) {
+        alert("Iltimos, do'kon nomini yozing va xaritadan joyini belgilang!");
+        return;
+      }
+
+      const newShop = {
+        id: Date.now().toString(),
+        name,
+        contactName,
+        phone,
+        notes,
+        type,
+        lat,
+        lng,
+        lastDelivery: deliveryDate,
+        yellowDays,
+        redDays,
+        updatedAt: new Date().toISOString()
+      };
+
+      syncShopSave(newShop);
+      closeAllSheets();
+    };
+
     window.saveEditedShop = function() {
       const id = document.getElementById('editShopId').value;
-      const name = document.getElementById('editShopName').value.trim();
-      const contactName = document.getElementById('editContactName').value.trim();
-      const phone = document.getElementById('editShopPhone').value.trim();
-      const lastDelivery = document.getElementById('editDeliveryDate').value;
-      const yellowDays = parseInt(document.getElementById('editYellowDays').value) || 5;
-      const redDays = parseInt(document.getElementById('editRedDays').value) || 7;
-      const notes = document.getElementById('editShopNotes').value.trim();
+      const shop = shops.find(s => s.id === id);
+      if (!shop) return;
 
+      const name = document.getElementById('editShopName').value.trim();
       if (!name) {
         alert("Do'kon nomini kiriting!");
         return;
       }
 
-      shops = shops.map(s => {
-        if (s.id === id) {
-          return { ...s, name, contactName, phone, lastDelivery, yellowDays, redDays, notes };
-        }
-        return s;
-      });
+      const updated = {
+        ...shop,
+        name,
+        contactName: document.getElementById('editContactName').value.trim(),
+        phone: document.getElementById('editShopPhone').value.trim(),
+        lastDelivery: document.getElementById('editDeliveryDate').value,
+        yellowDays: parseInt(document.getElementById('editYellowDays').value) || 5,
+        redDays: parseInt(document.getElementById('editRedDays').value) || 7,
+        notes: document.getElementById('editShopNotes').value.trim(),
+        updatedAt: new Date().toISOString()
+      };
 
-      localStorage.setItem('shops_data', JSON.stringify(shops));
+      syncShopSave(updated);
       closeAllSheets();
-      render();
       if (markers[id]) markers[id].openPopup();
     };
 
-    // Filtrni belgilash
+    window.signContract = function(id) {
+      const shop = shops.find(s => s.id === id);
+      if (!shop) return;
+      const updated = {
+        ...shop,
+        type: 'client',
+        lastDelivery: new Date().toISOString().split('T')[0],
+        yellowDays: shop.yellowDays || 5,
+        redDays: shop.redDays || 7,
+        updatedAt: new Date().toISOString()
+      };
+      syncShopSave(updated);
+      if (markers[id]) markers[id].openPopup();
+    };
+
+    window.breakContract = function(id) {
+      if (confirm("Shartnomani to'xtatmoqchimisiz? Ushbu do'kon yana ko'k (rejadagi) holatga qaytadi.")) {
+        const shop = shops.find(s => s.id === id);
+        if (!shop) return;
+        const updated = {
+          ...shop,
+          type: 'lead',
+          updatedAt: new Date().toISOString()
+        };
+        syncShopSave(updated);
+        if (markers[id]) markers[id].openPopup();
+      }
+    };
+
+    window.updateDelivery = function(id) {
+      const shop = shops.find(s => s.id === id);
+      if (!shop) return;
+      const updated = {
+        ...shop,
+        lastDelivery: new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString()
+      };
+      syncShopSave(updated);
+      if (markers[id]) markers[id].openPopup();
+    };
+
+    window.deleteShop = function(id) {
+      if (confirm("Ushbu do'konni butunlay o'chirib tashlamoqchimisiz?")) {
+        syncShopDelete(id);
+      }
+    };
+
+    // =========================================================================
+    // 3. GOOGLE FIREBASE INITIALIZATION & REALTIME SYNC
+    // =========================================================================
+
+    function updateCloudPill(status, text) {
+      const pill = document.getElementById('cloudStatusPill');
+      const badge = document.getElementById('cloudStatusBadge');
+      const textElem = document.getElementById('cloudStatusText');
+      
+      pill.className = `cloud-status-pill ${status}`;
+      textElem.innerText = text;
+
+      if (status === 'online') {
+        badge.className = 'status-badge-inline connected';
+        badge.innerText = '🟢 Ulangan (Faol)';
+      } else {
+        badge.className = 'status-badge-inline disconnected';
+        badge.innerText = '⚪ Ulanmagan';
+      }
+    }
+
+    function initFirebase() {
+      const savedConfig = localStorage.getItem('firebase_config');
+      if (!savedConfig) {
+        updateCloudPill('offline', '📱 Lokal rejim (Bulutga ulash)');
+        return;
+      }
+
+      try {
+        const config = JSON.parse(savedConfig);
+        if (!firebase.apps.length) {
+          firebase.initializeApp(config);
+        }
+        db = firebase.firestore();
+        isFirebaseActive = true;
+        updateCloudPill('online', '🟢 Bulutga ulangan');
+        document.getElementById('firebaseConfigInput').value = JSON.stringify(config, null, 2);
+
+        // Realtime listener: Google Cloud bazasi o'zgarsa, hamma telefonlarda darhol yangilanadi!
+        if (firebaseUnsubscribe) firebaseUnsubscribe();
+        firebaseUnsubscribe = db.collection("shops").onSnapshot((snapshot) => {
+          let cloudShops = [];
+          snapshot.forEach((doc) => {
+            cloudShops.push(doc.data());
+          });
+
+          if (cloudShops.length > 0) {
+            shops = cloudShops;
+            localStorage.setItem('shops_data', JSON.stringify(shops));
+            render();
+          } else if (shops.length > 0) {
+            // Agar bulut bo'sh bo'lsa, mavjud lokal do'konlarni bulutga nusxalash
+            uploadLocalShopsToFirebase();
+          }
+        }, (err) => {
+          console.error("Firebase snapshot error:", err);
+          updateCloudPill('offline', '⚠️ Bulut xatosi');
+        });
+
+      } catch (err) {
+        console.error("Firebase init error:", err);
+        updateCloudPill('offline', '📱 Lokal rejim');
+      }
+    }
+
+    // Mavjud do'konlarni bulutga ommaviy yuklash
+    async function uploadLocalShopsToFirebase() {
+      if (!db || shops.length === 0) return;
+      const batch = db.batch();
+      shops.forEach((shop) => {
+        const docRef = db.collection("shops").doc(shop.id);
+        batch.set(docRef, shop);
+      });
+      await batch.commit();
+      console.log("Local shops uploaded to Firebase.");
+    }
+
+    // Sozlamalardan ulanish
+    window.connectFirebase = function() {
+      let raw = document.getElementById('firebaseConfigInput').value.trim();
+      if (!raw) {
+        alert("Iltimos, Firebase konfiguratsiyasini kiriting!");
+        return;
+      }
+
+      if (raw.includes('{')) {
+        raw = raw.substring(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+      }
+
+      let parsed = null;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (e) {
+        try {
+          parsed = (new Function(`return ${raw};`))();
+        } catch (e2) {
+          alert("Konfiguratsiya formati noto'g'ri. Iltimos, Firebase'dan olingan matnni to'liq joylang.");
+          return;
+        }
+      }
+
+      if (!parsed || !parsed.projectId) {
+        alert("Firebase projectId topilmadi!");
+        return;
+      }
+
+      localStorage.setItem('firebase_config', JSON.stringify(parsed));
+      alert("Sozlamalar saqlandi! Baza ulanmoqda...");
+      initFirebase();
+      uploadLocalShopsToFirebase();
+      closeAllSheets();
+    };
+
+    window.disconnectFirebase = function() {
+      if (confirm("Bulutli bazadan uzmoqchimisiz? Ma'lumotlar faqat telefonda qoladi.")) {
+        localStorage.removeItem('firebase_config');
+        if (firebaseUnsubscribe) firebaseUnsubscribe();
+        db = null;
+        isFirebaseActive = false;
+        updateCloudPill('offline', '📱 Lokal rejim');
+        document.getElementById('firebaseConfigInput').value = '';
+        alert("Bulutli baza uzildi. Dastur lokal xotirada ishlamoqda.");
+      }
+    };
+
+    // =========================================================================
+    // 4. QIDIRUV, FILTR VA RENDERING
+    // =========================================================================
+
     window.setFilter = function(filter, element) {
       currentFilter = filter;
       document.querySelectorAll('.filter-chips .chip').forEach(c => c.classList.remove('active'));
@@ -569,12 +1217,10 @@
       setFilter(filter, chipBtn);
     };
 
-    // Xarita ustiga bosilganda qo'shish oynasi
     map.on('click', function(e) {
       openAddModal(e.latlng.lat.toFixed(5), e.latlng.lng.toFixed(5));
     });
 
-    // GPS: Telefon turgan joyni aniqlash
     function locateMe() {
       if (!navigator.geolocation) {
         alert("Brauzeringiz geolokatsiyani qo'llab-quvvatlamaydi.");
@@ -587,19 +1233,24 @@
         L.circleMarker([userLat, userLng], {
           radius: 8,
           fillColor: "#2563eb",
-          color: "#fff",
+          color: "#ffffff",
           weight: 3,
-          fillOpacity: 0.9
+          fillOpacity: 0.95
         }).addTo(map).bindPopup("📍 Siz turgan joy").openPopup();
       }, () => {
         alert("Lokatsiyani aniqlab bo'lmadi. GPS yoqilganini tekshiring.");
       }, { enableHighAccuracy: true });
     }
 
-    // Do'kon holati va rangini aniqlash
     function getShopStatus(shop) {
       if (shop.type === 'lead') {
-        return { color: '#3b82f6', key: 'lead', className: 'blue', text: 'Shartnoma qilinmagan (Ko\'k)' };
+        return { 
+          color: '#3b82f6', 
+          key: 'lead', 
+          className: 'blue', 
+          badgeClass: 'badge-blue', 
+          text: '🔵 Shartnoma yo\'q (Reja)' 
+        };
       }
       
       const lastDate = new Date(shop.lastDelivery || new Date());
@@ -608,15 +1259,32 @@
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
       if (diffDays >= (shop.redDays || 7)) {
-        return { color: '#ef4444', key: 'red', className: 'red', text: `${diffDays} kun o'tdi (Borish shart!)` };
+        return { 
+          color: '#ef4444', 
+          key: 'red', 
+          className: 'red', 
+          badgeClass: 'badge-red', 
+          text: `🔴 ${diffDays} kun o'tdi (Borish shart!)` 
+        };
       } else if (diffDays >= (shop.yellowDays || 5)) {
-        return { color: '#f59e0b', key: 'yellow', className: 'yellow', text: `${diffDays} kun o'tdi (Muddat yetdi)` };
+        return { 
+          color: '#f59e0b', 
+          key: 'yellow', 
+          className: 'yellow', 
+          badgeClass: 'badge-yellow', 
+          text: `🟡 ${diffDays} kun o'tdi (Muddati yetdi)` 
+        };
       } else {
-        return { color: '#10b981', key: 'green', className: 'green', text: `${diffDays} kun oldin berilgan` };
+        return { 
+          color: '#10b981', 
+          key: 'green', 
+          className: 'green', 
+          badgeClass: 'badge-green', 
+          text: `🟢 ${diffDays} kun oldin berilgan` 
+        };
       }
     }
 
-    // Xaritadagi va ro'yxatdagi do'konlarni yangilash
     function render() {
       for (let id in markers) {
         map.removeLayer(markers[id]);
@@ -629,7 +1297,6 @@
       document.getElementById('count').innerText = shops.length;
       document.getElementById('listTotalCount').innerText = shops.length;
 
-      // Statistikani hisoblash
       let cRed = 0, cYellow = 0, cGreen = 0, cBlue = 0;
       shops.forEach(s => {
         const st = getShopStatus(s);
@@ -645,16 +1312,13 @@
 
       const query = (document.getElementById('shopSearchInput')?.value || '').toLowerCase().trim();
 
-      // Filtrlash
       const filteredShops = shops.filter(shop => {
         const status = getShopStatus(shop);
         
-        // Status filtri
         if (currentFilter !== 'all' && status.key !== currentFilter) {
           return false;
         }
 
-        // Qidiruv filtri
         if (query) {
           const nameMatch = shop.name.toLowerCase().includes(query);
           const contactMatch = (shop.contactName || '').toLowerCase().includes(query);
@@ -678,61 +1342,64 @@
 
         const marker = L.marker([shop.lat, shop.lng], { icon: customIcon }).addTo(map);
 
-        let actions = '';
+        let statusActionBtn = '';
         if (shop.type === 'lead') {
-          actions = `<button class="popup-btn btn-partner" onclick="signContract('${shop.id}')">🤝 Shartnoma tuzildi (Mahsulot berildi)</button>`;
+          statusActionBtn = `<button class="p-btn p-btn-status-lead" onclick="signContract('${shop.id}')">🤝 Shartnoma tuzildi</button>`;
         } else {
-          actions = `
-            <button class="popup-btn btn-delivered" onclick="updateDelivery('${shop.id}')">🔄 Bugun mahsulot topshirildi</button>
-            <button class="popup-btn btn-cancel" onclick="breakContract('${shop.id}')">⚠️ Shartnomani to'xtatish (Ko'k qilish)</button>
+          statusActionBtn = `
+            <div class="popup-btn-row">
+              <button class="p-btn p-btn-status-done" onclick="updateDelivery('${shop.id}')">🔄 Mahsulot berildi</button>
+              <button class="p-btn p-btn-status-revert" onclick="breakContract('${shop.id}')">⚠️ Rejaga qaytarish</button>
+            </div>
           `;
         }
 
-        // Qo'ng'iroq qilish tugmasi
-        if (shop.phone) {
-          actions += `<a href="tel:${shop.phone}" class="popup-btn btn-call">📞 Qo'ng'iroq qilish</a>`;
-        }
+        const popupContent = `
+          <div class="shop-popup-card">
+            <div class="popup-head">
+              <div class="popup-title">${shop.name}</div>
+              <span class="popup-badge ${status.badgeClass}">${status.text}</span>
+            </div>
 
-        // Navigatsiya tugmalari (Yandex va Google)
-        actions += `
-          <div class="nav-btn-row">
-            <a href="https://yandex.com/navi/?whatshere[point]=${shop.lng}%2C${shop.lat}" target="_blank" class="popup-btn btn-nav-yandex">🚗 Yandex</a>
-            <a href="https://www.google.com/maps/dir/?api=1&destination=${shop.lat},${shop.lng}" target="_blank" class="popup-btn btn-nav-google">🗺 Google</a>
-          </div>
-        `;
-
-        actions += `<button class="popup-btn btn-contact" onclick="openEditModal('${shop.id}')">✏️ Ma'lumotlarni tahrirlash</button>`;
-        actions += `<button class="popup-btn btn-del" onclick="deleteShop('${shop.id}')">🗑 O'chirish</button>`;
-
-        let contactInfoHtml = '';
-        if (shop.contactName || shop.phone || shop.notes) {
-          contactInfoHtml = `
-            <div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1; font-size: 0.78rem;">
+            <div class="popup-info-box">
               ${shop.contactName ? `<div>👤 <b>Mas'ul:</b> ${shop.contactName}</div>` : ''}
-              ${shop.phone ? `<div>📞 <b>Tel:</b> <a href="tel:${shop.phone}" style="color: #2563eb; font-weight: 600; text-decoration: none;">${shop.phone}</a></div>` : ''}
-              ${shop.notes ? `<div style="color: #64748b; margin-top:2px;">📝 <i>${shop.notes}</i></div>` : ''}
+              ${shop.phone ? `<div>📞 <b>Tel:</b> <a href="tel:${shop.phone}" class="popup-info-link">${shop.phone}</a></div>` : ''}
+              ${shop.type === 'client' && shop.lastDelivery ? `<div>📅 <b>Oxirgi sana:</b> ${shop.lastDelivery}</div>` : ''}
+              ${shop.notes ? `<div style="margin-top:2px; color:#475569;">📝 <i>${shop.notes}</i></div>` : ''}
             </div>
-          `;
-        }
 
-        const popup = `
-          <div style="font-size:0.82rem; min-width: 210px;">
-            <b style="font-size:0.95rem;">${shop.name}</b><br>
-            <span style="color:${status.color}; font-weight:700;">${status.text}</span><br>
-            ${shop.type === 'client' ? `<small style="color:#64748b;">Oxirgi topshirilgan: ${shop.lastDelivery}</small>` : ''}
-            ${contactInfoHtml}
-            <div class="popup-actions">
-              ${actions}
+            <div class="popup-actions-grid">
+              ${shop.phone ? `
+                <a href="tel:${shop.phone}" class="p-btn p-btn-call">
+                  📞 Qo'ng'iroq qilish (${shop.phone})
+                </a>
+              ` : ''}
+
+              <div class="popup-btn-row">
+                <a href="https://yandex.com/navi/?whatshere[point]=${shop.lng}%2C${shop.lat}" target="_blank" class="p-btn p-btn-yandex">
+                  🚗 Yandex
+                </a>
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${shop.lat},${shop.lng}" target="_blank" class="p-btn p-btn-google">
+                  🗺 Google
+                </a>
+              </div>
+
+              ${statusActionBtn}
+
+              <div class="popup-btn-row">
+                <button class="p-btn p-btn-edit" onclick="openEditModal('${shop.id}')">✏️ Tahrirlash</button>
+                <button class="p-btn p-btn-del" onclick="deleteShop('${shop.id}')">🗑 O'chirish</button>
+              </div>
             </div>
           </div>
         `;
-        marker.bindPopup(popup);
+
+        marker.bindPopup(popupContent);
         markers[shop.id] = marker;
       });
 
-      // Ro'yxatni chiqarish (Filtrlangan holatda)
       if (filteredShops.length === 0) {
-        listContainer.innerHTML = `<div style="text-align:center; padding:30px 10px; color:#94a3b8; font-size:0.85rem;">Hech qanday do'kon topilmadi.</div>`;
+        listContainer.innerHTML = `<div style="text-align:center; padding:35px 10px; color:#94a3b8; font-size:0.86rem;">Do'konlar topilmadi.</div>`;
       } else {
         filteredShops.forEach((shop) => {
           const status = getShopStatus(shop);
@@ -741,7 +1408,7 @@
           card.innerHTML = `
             <div class="shop-card-title">
               <span>${shop.name}</span>
-              <span style="font-size:0.8rem; color:${status.color};">●</span>
+              <span style="font-size:0.82rem; color:${status.color};">●</span>
             </div>
             ${(shop.contactName || shop.phone) ? `
               <div class="shop-card-info">
@@ -750,7 +1417,10 @@
               </div>
             ` : ''}
             ${shop.notes ? `<div class="shop-card-notes">📝 ${shop.notes}</div>` : ''}
-            <div class="shop-card-meta">${status.text}</div>
+            <div class="shop-card-meta">
+              <span>${status.text}</span>
+              <span style="color:#2563eb; font-weight:600; font-size:0.75rem;">Xaritada ko'rish ›</span>
+            </div>
           `;
           card.onclick = () => {
             closeAllSheets();
@@ -762,94 +1432,9 @@
       }
     }
 
-    // Yangi do'kon saqlash
-    function saveNewShop() {
-      const name = document.getElementById('shopName').value.trim();
-      const contactName = document.getElementById('contactName').value.trim();
-      const phone = document.getElementById('shopPhone').value.trim();
-      const notes = document.getElementById('shopNotes').value.trim();
-      const type = document.getElementById('shopType').value;
-      const lat = parseFloat(document.getElementById('lat').value);
-      const lng = parseFloat(document.getElementById('lng').value);
-      const deliveryDate = document.getElementById('deliveryDate').value;
-      const yellowDays = parseInt(document.getElementById('yellowDays').value) || 5;
-      const redDays = parseInt(document.getElementById('redDays').value) || 7;
-
-      if (!name || isNaN(lat) || isNaN(lng)) {
-        alert("Iltimos, do'kon nomini yozing va xaritadan joyini belgilang!");
-        return;
-      }
-
-      shops.push({
-        id: Date.now().toString(),
-        name,
-        contactName,
-        phone,
-        notes,
-        type,
-        lat,
-        lng,
-        lastDelivery: deliveryDate,
-        yellowDays,
-        redDays
-      });
-      localStorage.setItem('shops_data', JSON.stringify(shops));
-      closeAllSheets();
-      render();
-    }
-
-    // Shartnoma tuzish
-    window.signContract = function(id) {
-      const today = new Date().toISOString().split('T')[0];
-      shops = shops.map(s => {
-        if (s.id === id) {
-          s.type = 'client';
-          s.lastDelivery = today;
-          s.yellowDays = s.yellowDays || 5;
-          s.redDays = s.redDays || 7;
-        }
-        return s;
-      });
-      localStorage.setItem('shops_data', JSON.stringify(shops));
-      render();
-      if (markers[id]) markers[id].openPopup();
-    };
-
-    // Shartnomani to'xtatish
-    window.breakContract = function(id) {
-      if (confirm("Shartnomani to'xtatmoqchimisiz? Ushbu do'kon yana ko'k (rejadagi) holatga qaytadi.")) {
-        shops = shops.map(s => {
-          if (s.id === id) s.type = 'lead';
-          return s;
-        });
-        localStorage.setItem('shops_data', JSON.stringify(shops));
-        render();
-        if (markers[id]) markers[id].openPopup();
-      }
-    };
-
-    // Mahsulot topshirilgan kunni yangilash
-    window.updateDelivery = function(id) {
-      const today = new Date().toISOString().split('T')[0];
-      shops = shops.map(s => {
-        if (s.id === id) s.lastDelivery = today;
-        return s;
-      });
-      localStorage.setItem('shops_data', JSON.stringify(shops));
-      render();
-      if (markers[id]) markers[id].openPopup();
-    };
-
-    // Butunlay o'chirish
-    window.deleteShop = function(id) {
-      if (confirm("Ushbu do'konni butunlay o'chirib tashlamoqchimisiz?")) {
-        shops = shops.filter(s => s.id !== id);
-        localStorage.setItem('shops_data', JSON.stringify(shops));
-        render();
-      }
-    };
-
-    // Atrofdagi do'konlarni qidirish (Overpass API)
+    // =========================================================================
+    // 5. ATROFDAGI DO'KONLARNI QIDIRISH (OVERPASS API)
+    // =========================================================================
     async function fetchNearbyShops() {
       const btn = document.getElementById('findShopsBtn');
       btn.innerText = "⏳ Qidirilmoqda...";
@@ -890,12 +1475,12 @@
 
             const marker = L.marker([lat, lng], { icon }).addTo(map);
             marker.bindPopup(`
-              <div style="font-size:0.8rem;">
-                <b>🏢 ${name}</b><br>
+              <div style="font-size:0.82rem; padding:6px 4px;">
+                <b style="font-size:0.95rem; color:#0f172a;">🏢 ${name}</b><br>
                 <small style="color:#64748b;">Xaritadan topilgan do'kon</small>
-                <div class="popup-actions">
-                  <button class="popup-btn btn-partner" onclick="quickAdd('${name.replace(/'/g, "\\'")}', ${lat}, ${lng}, 'client')">🤝 Shartnoma tuzish</button>
-                  <button class="popup-btn btn-cancel" style="background:#3b82f6;" onclick="quickAdd('${name.replace(/'/g, "\\'")}', ${lat}, ${lng}, 'lead')">🔵 Ko'k (Rejaga kiritish)</button>
+                <div style="display:flex; flex-direction:column; gap:5px; margin-top:8px;">
+                  <button class="p-btn p-btn-status-lead" onclick="quickAdd('${name.replace(/'/g, "\\'")}', ${lat}, ${lng}, 'client')">🤝 Shartnoma tuzish</button>
+                  <button class="p-btn" style="background:#e2e8f0; color:#334155;" onclick="quickAdd('${name.replace(/'/g, "\\'")}', ${lat}, ${lng}, 'lead')">🔵 Rejaga kiritish</button>
                 </div>
               </div>
             `);
@@ -906,14 +1491,14 @@
       } catch (err) {
         alert("Do'konlarni yuklashda xatolik bo'ldi. Internetni tekshiring.");
       } finally {
-        btn.innerText = "🔍 Atrofdagi do'konlar";
+        btn.innerHTML = `<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Atrofdagi do'konlar`;
         btn.disabled = false;
       }
     }
 
     window.quickAdd = function(name, lat, lng, type) {
       const today = new Date().toISOString().split('T')[0];
-      shops.push({
+      const newShop = {
         id: Date.now().toString(),
         name,
         contactName: '',
@@ -924,18 +1509,17 @@
         lng,
         lastDelivery: today,
         yellowDays: 5,
-        redDays: 7
-      });
-      localStorage.setItem('shops_data', JSON.stringify(shops));
+        redDays: 7,
+        updatedAt: new Date().toISOString()
+      };
+      syncShopSave(newShop);
       fetchNearbyShops();
-      render();
     };
 
-    // ==========================================
-    // ZAXIRA NUSXA (BACKUP & EXPORT / IMPORT)
-    // ==========================================
+    // =========================================================================
+    // 6. ZAXIRA NUSXA VA FAYLLI EKSPORT / IMPORT
+    // =========================================================================
 
-    // JSON eksport
     window.exportJSON = function() {
       if (shops.length === 0) {
         alert("Saqlangan do'konlar mavjud emas!");
@@ -951,7 +1535,6 @@
       downloadAnchor.remove();
     };
 
-    // Excel (CSV) eksport
     window.exportCSV = function() {
       if (shops.length === 0) {
         alert("Eksport qilish uchun do'konlar mavjud emas!");
@@ -973,7 +1556,7 @@
         ].join(",");
       });
 
-      const BOM = "\uFEFF"; // Excelda o'zbekcha harflar to'g'ri ko'rinishi uchun
+      const BOM = "\uFEFF";
       const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(BOM + [headers.join(","), ...rows].join("\n"));
       const downloadAnchor = document.createElement('a');
       const date = new Date().toISOString().split('T')[0];
@@ -984,7 +1567,6 @@
       downloadAnchor.remove();
     };
 
-    // JSON fayldan import qilish
     window.handleFileImport = function(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -1000,18 +1582,19 @@
 
           const action = confirm(
             `Faylda ${importedData.length} ta do'kon topildi.\n\n` +
-            `"OK" ni bossangiz: yangi do'konlar hozirgi ro'yxatga qo'shiladi.\n` +
-            `"Bekor qilish" ni bossangiz: bekor bo'ladi.`
+            `"OK" ni bossangiz: yangi do'konlar hozirgi ro'yxatga qo'shiladi va bazaga yoziladi.`
           );
 
           if (action) {
-            // ID bo'yicha takrorlanishning oldini olish
             const existingIds = new Set(shops.map(s => s.id));
             let addedCount = 0;
             importedData.forEach(item => {
               if (item.name && item.lat && item.lng) {
                 if (!existingIds.has(item.id)) {
                   shops.push(item);
+                  if (db) {
+                    db.collection("shops").doc(item.id).set(item);
+                  }
                   addedCount++;
                 }
               }
@@ -1030,9 +1613,11 @@
       event.target.value = '';
     };
 
-    // Barcha ma'lumotlarni o'chirish
     window.clearAllData = function() {
       if (confirm("DIQQAT: Barcha do'konlar o'chib ketadi! Davom ettirilsinmi?")) {
+        if (db) {
+          shops.forEach(s => db.collection("shops").doc(s.id).delete());
+        }
         shops = [];
         localStorage.removeItem('shops_data');
         render();
@@ -1041,7 +1626,9 @@
       }
     };
 
+    // Boshlang'ich yuklash
     render();
+    initFirebase();
   </script>
 </body>
 </html>
