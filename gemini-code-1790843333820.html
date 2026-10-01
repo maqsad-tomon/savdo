@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Do'konlar Nazorati — Savdo & Monitoring Tizimi</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #0f172a; }
+
+    #app-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Asosiy Xarita */
+    #map {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Telefon uchun yuqori tezkor panel */
+    .top-bar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+    }
+    .top-btn {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.92);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.18);
+      backdrop-filter: blur(10px);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .top-btn:active { transform: scale(0.97); }
+
+    /* Pastki menyu paneli */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 62px;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      z-index: 1000;
+      box-shadow: 0 -3px 15px rgba(0,0,0,0.08);
+    }
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: #64748b;
+      font-size: 0.72rem;
+      font-weight: 600;
+      gap: 2px;
+      cursor: pointer;
+    }
+    .nav-btn.active { color: #2563eb; }
+    .nav-btn span.icon { font-size: 1.25rem; }
+
+    /* Pastdan ko'tariluvchi modallar */
+    .sheet-modal {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -105%;
+      height: 85vh;
+      background: #ffffff;
+      border-radius: 20px 20px 0 0;
+      z-index: 1500;
+      box-shadow: 0 -6px 30px rgba(0,0,0,0.35);
+      display: flex;
+      flex-direction: column;
+      transition: bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .sheet-modal.open { bottom: 0; }
+
+    .sheet-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+      border-radius: 20px 20px 0 0;
+    }
+    .sheet-header h3 { font-size: 1rem; color: #0f172a; font-weight: 700; }
+    .close-btn { background: #e2e8f0; border: none; border-radius: 50%; width: 32px; height: 32px; font-weight: 700; cursor: pointer; color: #334155; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+
+    .sheet-content {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+      padding-bottom: 80px;
+    }
+
+    /* Statistika bloki */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .stat-card {
+      padding: 8px 4px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+    }
+    .stat-card .num { font-size: 1.15rem; font-weight: 800; display: block; margin-bottom: 2px; }
+    .stat-red { background: #ef4444; }
+    .stat-yellow { background: #f59e0b; }
+    .stat-green { background: #10b981; }
+    .stat-blue { background: #3b82f6; }
+
+    /* Qidiruv va Filtrlar */
+    .search-box {
+      margin-bottom: 10px;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      outline: none;
+      background: #f8fafc;
+    }
+    .search-box input:focus { border-color: #2563eb; background: #fff; }
+
+    .filter-chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .chip {
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid #cbd5e1;
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .chip.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+    /* Formalar */
+    .input-group { margin-bottom: 12px; }
+    .input-group label { display: block; font-size: 0.78rem; font-weight: 600; color: #475569; margin-bottom: 5px; }
+    .input-group input, .input-group select, .input-group textarea {
+      width: 100%; padding: 11px 12px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 0.9rem; outline: none; background: #fff;
+    }
+    .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: #2563eb; }
+    .row-inputs { display: flex; gap: 8px; }
+
+    .btn-submit {
+      width: 100%; padding: 12px; border: none; border-radius: 10px; font-size: 0.92rem; font-weight: 700; cursor: pointer; background: #2563eb; color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    }
+    .btn-submit:active { transform: scale(0.98); }
+
+    /* Ro'yxat kartochkalari */
+    .shop-list { display: flex; flex-direction: column; gap: 8px; }
+    .shop-card {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; border-left: 6px solid #cbd5e1; box-shadow: 0 2px 6px rgba(0,0,0,0.03); cursor: pointer;
+    }
+    .shop-card.green { border-left-color: #10b981; }
+    .shop-card.yellow { border-left-color: #f59e0b; }
+    .shop-card.red { border-left-color: #ef4444; }
+    .shop-card.blue { border-left-color: #3b82f6; }
+    
+    .shop-card-title { font-weight: 700; font-size: 0.92rem; color: #0f172a; display: flex; justify-content: space-between; align-items: center; }
+    .shop-card-info { font-size: 0.78rem; color: #334155; margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+    .shop-card-notes { font-size: 0.74rem; color: #64748b; background: #f8fafc; padding: 4px 8px; border-radius: 6px; margin-top: 4px; border-left: 3px solid #cbd5e1; }
+    .shop-card-meta { font-size: 0.75rem; color: #64748b; margin-top: 5px; font-weight: 600; }
+
+    /* Popup tugmalari */
+    .popup-actions { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+    .popup-btn {
+      width: 100%; padding: 8px 10px; border: none; border-radius: 7px; font-size: 0.76rem; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .btn-partner { background: #2563eb; color: #fff; }
+    .btn-delivered { background: #10b981; color: #fff; }
+    .btn-cancel { background: #f59e0b; color: #fff; }
+    .btn-call { background: #059669; color: #fff; }
+    .btn-nav-yandex { background: #e11d48; color: #fff; }
+    .btn-nav-google { background: #0284c7; color: #fff; }
+    .btn-contact { background: #6366f1; color: #fff; }
+    .btn-del { background: #ef4444; color: #fff; }
+
+    .nav-btn-row { display: flex; gap: 4px; }
+    .nav-btn-row .popup-btn { flex: 1; padding: 7px 4px; font-size: 0.72rem; }
+
+    /* Zaxira (Backup) bo'limi uslublari */
+    .backup-section {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .backup-section h4 { font-size: 0.88rem; color: #0f172a; margin-bottom: 6px; }
+    .backup-section p { font-size: 0.75rem; color: #64748b; margin-bottom: 10px; }
+    .btn-action-alt {
+      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; font-weight: 600; font-size: 0.82rem; cursor: pointer; color: #0f172a; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px;
+    }
+    .btn-action-alt:active { background: #f1f5f9; }
+
+    /* Maxsus markerlar */
+    .custom-marker {
+      width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app-container">
+    
+    <!-- Yuqori tezkor qidiruv & GPS paneli -->
+    <div class="top-bar">
+      <button class="top-btn" onclick="locateMe()">📍 Joylashuvim</button>
+      <button class="top-btn" id="findShopsBtn" onclick="fetchNearbyShops()">🔍 Atrofdagi do'konlar</button>
+    </div>
+
+    <!-- Xarita -->
+    <div id="map"></div>
+
+    <!-- Pastki menyu paneli -->
+    <div class="bottom-nav">
+      <button class="nav-btn active" id="btnNavMap" onclick="closeAllSheets()"><span class="icon">🗺</span>Xarita</button>
+      <button class="nav-btn" id="btnNavList" onclick="openSheet('listSheet')"><span class="icon">📋</span>Ro'yxat (<span id="count">0</span>)</button>
+      <button class="nav-btn" id="btnNavAdd" onclick="openAddModal()"><span class="icon">➕</span>Do'kon</button>
+      <button class="nav-btn" id="btnNavBackup" onclick="openSheet('backupSheet')"><span class="icon">💾</span>Zaxira</button>
+    </div>
+
+    <!-- Do'konlar ro'yxati modali -->
+    <div class="sheet-modal" id="listSheet">
+      <div class="sheet-header">
+        <h3>Mening Do'konlarim (<span id="listTotalCount">0</span>)</h3>
+        <button class="close-btn" onclick="closeAllSheets()">✕</button>
+      </div>
+      <div class="sheet-content">
+        
+        <!-- Bugungi holat statistikasi -->
+        <div class="stats-grid">
+          <div class="stat-card stat-red" onclick="filterByChip('red')">
+            <span class="num" id="statRed">0</span>Borish shart
+          </div>
+          <div class="stat-card stat-yellow" onclick="filterByChip('yellow')">
+            <span class="num" id="statYellow">0</span>Muddati yetdi
+          </div>
+          <div class="stat-card stat-green" onclick="filterByChip('green')">
+            <span class="num" id="statGreen">0</span>Yangi topshirilgan
+          </div>
+          <div class="stat-card stat-blue" onclick="filterByChip('lead')">
+            <span class="num" id="statBlue">0</span>Shartnoma yo'q
+          </div>
+        </div>
+
+        <!-- Qidiruv satri -->
+        <div class="search-box">
+          <input type="text" id="shopSearchInput" placeholder="🔍 Qidiruv (nomi, mas'ul, telefon)..." oninput="render()" />
+        </div>
+
+        <!-- Filtr tugmalari (Chips) -->
+        <div class="filter-chips">
+          <button class="chip active" onclick="setFilter('all', this)">Barchasi</button>
+          <button class="chip" onclick="setFilter('red', this)">🔴 Borish shart</button>
+          <button class="chip" onclick="setFilter('yellow', this)">🟡 Muddati yetgan</button>
+          <button class="chip" onclick="setFilter('green', this)">🟢 Yangi</button>
+          <button class="chip" onclick="setFilter('lead', this)">🔵 Rejadagi</button>
+        </div>
+
+        <div class="shop-list" id="shopsListContainer"></div>
+      </div>
+    </div>
+
+    <!-- Yangi do'kon qo'shish modali -->
+    <div class="sheet-modal" id="addSheet">
+      <div class="sheet-header">
+        <h3 id="formModalTitle">Yangi Do'kon Qo'shish</h3>
+        <button class="close-btn" onclick="closeAllSheets()">✕</button>
+      </div>
+      <div class="sheet-content">
+        <div class="input-group">
+          <label>Do'kon nomi:</label>
+          <input type="text" id="shopName" placeholder="Masalan: Baraka Oziq-ovqat" />
+        </div>
+
+        <div class="row-inputs">
+          <div class="input-group" style="flex: 1;">
+            <label>Mas'ul shaxs (Ismi):</label>
+            <input type="text" id="contactName" placeholder="Masalan: Sardor aka" />
+          </div>
+          <div class="input-group" style="flex: 1;">
+            <label>Telefon raqam:</label>
+            <input type="tel" id="shopPhone" placeholder="+998 90 123 45 67" />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Hamkorlik holati:</label>
+          <select id="shopType" onchange="toggleFormInputs()">
+            <option value="lead">🔵 Shartnoma qilinmagan (Ko'k rangda)</option>
+            <option value="client">🟢 Hamkor do'kon (Mahsulot berilgan)</option>
+          </select>
+        </div>
+
+        <div id="clientInputs" style="display: none;">
+          <div class="input-group">
+            <label>Oxirgi mahsulot berilgan sana:</label>
+            <input type="date" id="deliveryDate" />
+          </div>
+
+          <div class="row-inputs">
+            <div class="input-group" style="flex: 1;">
+              <label>Sariq muddat (kun):</label>
+              <input type="number" id="yellowDays" value="5" />
+            </div>
+            <div class="input-group" style="flex: 1;">
+              <label>Qizil muddat (kun):</label>
+              <input type="number" id="redDays" value="7" />
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Qayd / Izoh (Buyurtma, eslatma):</label>
+          <textarea id="shopNotes" rows="2" placeholder="Masalan: 10 blok sok berildi, puli dushanba"></textarea>
+        </div>
+
+        <div class="input-group">
+          <label>Lokatsiya (Kordinatalar):</label>
+          <div class="row-inputs">
+            <input type="number" step="any" id="lat" placeholder="Kenglik (Lat)" />
+            <input type="number" step="any" id="lng" placeholder="Uzunlik (Lng)" />
+          </div>
+          <small style="color: #64748b; font-size: 0.72rem; display: block; margin-top: 3px;">Xaritani xohlagan joyiga bossangiz kordinata o'zi tushadi.</small>
+        </div>
+
+        <button class="btn-submit" onclick="saveNewShop()">Saqlash</button>
+      </div>
+    </div>
+
+    <!-- Do'kon ma'lumotlarini to'liq tahrirlash modali -->
+    <div class="sheet-modal" id="editModal">
+      <div class="sheet-header">
+        <h3 id="editModalTitle">✏️ Do'konni tahrirlash</h3>
+        <button class="close-btn" onclick="closeAllSheets()">✕</button>
+      </div>
+      <div class="sheet-content">
+        <input type="hidden" id="editShopId" />
+        
+        <div class="input-group">
+          <label>Do'kon nomi:</label>
+          <input type="text" id="editShopName" />
+        </div>
+
+        <div class="row-inputs">
+          <div class="input-group" style="flex: 1;">
+            <label>Mas'ul shaxs (Ismi):</label>
+            <input type="text" id="editContactName" placeholder="Masalan: Sardor aka" />
+          </div>
+          <div class="input-group" style="flex: 1;">
+            <label>Telefon raqam:</label>
+            <input type="tel" id="editShopPhone" placeholder="+998 90 123 45 67" />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Oxirgi mahsulot berilgan sana:</label>
+          <input type="date" id="editDeliveryDate" />
+        </div>
+
+        <div class="row-inputs">
+          <div class="input-group" style="flex: 1;">
+            <label>Sariq muddat (kun):</label>
+            <input type="number" id="editYellowDays" />
+          </div>
+          <div class="input-group" style="flex: 1;">
+            <label>Qizil muddat (kun):</label>
+            <input type="number" id="editRedDays" />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Qayd / Izoh:</label>
+          <textarea id="editShopNotes" rows="3" placeholder="Masalan: Keyingi safar 5 blok taom oladi..."></textarea>
+        </div>
+
+        <button class="btn-submit" onclick="saveEditedShop()">O'zgarishlarni saqlash</button>
+      </div>
+    </div>
+
+    <!-- Zaxira nusxa (Backup) va Sozlamalar modali -->
+    <div class="sheet-modal" id="backupSheet">
+      <div class="sheet-header">
+        <h3>💾 Ma'lumotlar Zaxirasi & Eksport</h3>
+        <button class="close-btn" onclick="closeAllSheets()">✕</button>
+      </div>
+      <div class="sheet-content">
+        
+        <div class="backup-section">
+          <h4>📥 Zaxira nusxa olish (Backup)</h4>
+          <p>Telefon keshini tozalaganda yoki telefon almashtirganda ma'lumotlar yo'qolmasligi uchun zaxira nusxasini saqlab qo'ying.</p>
+          <button class="btn-action-alt" onclick="exportJSON()">💾 JSON Zaxira faylini yuklab olish</button>
+          <button class="btn-action-alt" onclick="exportCSV()">📊 Excel (CSV) jadvalini yuklab olish</button>
+        </div>
+
+        <div class="backup-section">
+          <h4>📤 Zaxirani qayta tiklash (Import)</h4>
+          <p>Oldin saqlangan JSON zaxira faylini tanlab barcha do'konlarni qayta tiklang.</p>
+          <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="handleFileImport(event)" />
+          <button class="btn-action-alt" style="border-color:#2563eb; color:#2563eb;" onclick="document.getElementById('importFileInput').click()">📂 Zaxira faylini yuklash (JSON)</button>
+        </div>
+
+        <div class="backup-section" style="border-color: #fecaca; background: #fff5f5;">
+          <h4 style="color:#ef4444;">⚠️ Tozalash</h4>
+          <p>Barcha do'konlar ma'lumotlarini butunlay o'chirish (avval zaxira nusxa olishingiz tavsiya etiladi).</p>
+          <button class="btn-action-alt" style="border-color:#ef4444; color:#ef4444;" onclick="clearAllData()">🗑 Barcha ma'lumotlarni tozalash</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Xarita - Andijon markazi (GPS orqali o'zingiznikiga moslashadi)
+    const map = L.map('map', { zoomControl: false }).setView([40.7821, 72.3442], 14);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    let markers = {};
+    let osmMarkers = [];
+    let shops = JSON.parse(localStorage.getItem('shops_data') || '[]');
+    let currentFilter = 'all';
+
+    document.getElementById('deliveryDate').value = new Date().toISOString().split('T')[0];
+
+    function toggleFormInputs() {
+      const type = document.getElementById('shopType').value;
+      document.getElementById('clientInputs').style.display = (type === 'client') ? 'block' : 'none';
+    }
+
+    // Modal boshqaruvi
+    function openSheet(id) {
+      closeAllSheets();
+      document.getElementById(id).classList.add('open');
+      updateNavHighlight(id);
+    }
+
+    function closeAllSheets() {
+      document.querySelectorAll('.sheet-modal').forEach(m => m.classList.remove('open'));
+      updateNavHighlight('map');
+    }
+
+    function updateNavHighlight(activeId) {
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      if (activeId === 'listSheet') document.getElementById('btnNavList').classList.add('active');
+      else if (activeId === 'addSheet') document.getElementById('btnNavAdd').classList.add('active');
+      else if (activeId === 'backupSheet') document.getElementById('btnNavBackup').classList.add('active');
+      else document.getElementById('btnNavMap').classList.add('active');
+    }
+
+    function openAddModal(lat = '', lng = '', name = '') {
+      document.getElementById('shopName').value = name;
+      document.getElementById('contactName').value = '';
+      document.getElementById('shopPhone').value = '';
+      document.getElementById('shopNotes').value = '';
+      document.getElementById('lat').value = lat;
+      document.getElementById('lng').value = lng;
+      document.getElementById('shopType').value = 'lead';
+      toggleFormInputs();
+      openSheet('addSheet');
+    }
+
+    // Do'konni to'liq tahrirlash modali
+    window.openEditModal = function(id) {
+      const shop = shops.find(s => s.id === id);
+      if (!shop) return;
+      document.getElementById('editShopId').value = id;
+      document.getElementById('editShopName').value = shop.name;
+      document.getElementById('editContactName').value = shop.contactName || '';
+      document.getElementById('editShopPhone').value = shop.phone || '';
+      document.getElementById('editDeliveryDate').value = shop.lastDelivery || new Date().toISOString().split('T')[0];
+      document.getElementById('editYellowDays').value = shop.yellowDays || 5;
+      document.getElementById('editRedDays').value = shop.redDays || 7;
+      document.getElementById('editShopNotes').value = shop.notes || '';
+      document.getElementById('editModalTitle').innerText = `${shop.name} — Tahrirlash`;
+      openSheet('editModal');
+    };
+
+    window.saveEditedShop = function() {
+      const id = document.getElementById('editShopId').value;
+      const name = document.getElementById('editShopName').value.trim();
+      const contactName = document.getElementById('editContactName').value.trim();
+      const phone = document.getElementById('editShopPhone').value.trim();
+      const lastDelivery = document.getElementById('editDeliveryDate').value;
+      const yellowDays = parseInt(document.getElementById('editYellowDays').value) || 5;
+      const redDays = parseInt(document.getElementById('editRedDays').value) || 7;
+      const notes = document.getElementById('editShopNotes').value.trim();
+
+      if (!name) {
+        alert("Do'kon nomini kiriting!");
+        return;
+      }
+
+      shops = shops.map(s => {
+        if (s.id === id) {
+          return { ...s, name, contactName, phone, lastDelivery, yellowDays, redDays, notes };
+        }
+        return s;
+      });
+
+      localStorage.setItem('shops_data', JSON.stringify(shops));
+      closeAllSheets();
+      render();
+      if (markers[id]) markers[id].openPopup();
+    };
+
+    // Filtrni belgilash
+    window.setFilter = function(filter, element) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-chips .chip').forEach(c => c.classList.remove('active'));
+      if (element) element.classList.add('active');
+      render();
+    };
+
+    window.filterByChip = function(filter) {
+      const chipBtn = Array.from(document.querySelectorAll('.filter-chips .chip')).find(b => b.getAttribute('onclick').includes(filter));
+      setFilter(filter, chipBtn);
+    };
+
+    // Xarita ustiga bosilganda qo'shish oynasi
+    map.on('click', function(e) {
+      openAddModal(e.latlng.lat.toFixed(5), e.latlng.lng.toFixed(5));
+    });
+
+    // GPS: Telefon turgan joyni aniqlash
+    function locateMe() {
+      if (!navigator.geolocation) {
+        alert("Brauzeringiz geolokatsiyani qo'llab-quvvatlamaydi.");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const userLat = pos.coords.latitude;
+        const userLng = pos.coords.longitude;
+        map.setView([userLat, userLng], 16);
+        L.circleMarker([userLat, userLng], {
+          radius: 8,
+          fillColor: "#2563eb",
+          color: "#fff",
+          weight: 3,
+          fillOpacity: 0.9
+        }).addTo(map).bindPopup("📍 Siz turgan joy").openPopup();
+      }, () => {
+        alert("Lokatsiyani aniqlab bo'lmadi. GPS yoqilganini tekshiring.");
+      }, { enableHighAccuracy: true });
+    }
+
+    // Do'kon holati va rangini aniqlash
+    function getShopStatus(shop) {
+      if (shop.type === 'lead') {
+        return { color: '#3b82f6', key: 'lead', className: 'blue', text: 'Shartnoma qilinmagan (Ko\'k)' };
+      }
+      
+      const lastDate = new Date(shop.lastDelivery || new Date());
+      const today = new Date();
+      const diffTime = Math.abs(today - lastDate);
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays >= (shop.redDays || 7)) {
+        return { color: '#ef4444', key: 'red', className: 'red', text: `${diffDays} kun o'tdi (Borish shart!)` };
+      } else if (diffDays >= (shop.yellowDays || 5)) {
+        return { color: '#f59e0b', key: 'yellow', className: 'yellow', text: `${diffDays} kun o'tdi (Muddat yetdi)` };
+      } else {
+        return { color: '#10b981', key: 'green', className: 'green', text: `${diffDays} kun oldin berilgan` };
+      }
+    }
+
+    // Xaritadagi va ro'yxatdagi do'konlarni yangilash
+    function render() {
+      for (let id in markers) {
+        map.removeLayer(markers[id]);
+      }
+      markers = {};
+
+      const listContainer = document.getElementById('shopsListContainer');
+      listContainer.innerHTML = '';
+      
+      document.getElementById('count').innerText = shops.length;
+      document.getElementById('listTotalCount').innerText = shops.length;
+
+      // Statistikani hisoblash
+      let cRed = 0, cYellow = 0, cGreen = 0, cBlue = 0;
+      shops.forEach(s => {
+        const st = getShopStatus(s);
+        if (st.key === 'red') cRed++;
+        else if (st.key === 'yellow') cYellow++;
+        else if (st.key === 'green') cGreen++;
+        else if (st.key === 'lead') cBlue++;
+      });
+      document.getElementById('statRed').innerText = cRed;
+      document.getElementById('statYellow').innerText = cYellow;
+      document.getElementById('statGreen').innerText = cGreen;
+      document.getElementById('statBlue').innerText = cBlue;
+
+      const query = (document.getElementById('shopSearchInput')?.value || '').toLowerCase().trim();
+
+      // Filtrlash
+      const filteredShops = shops.filter(shop => {
+        const status = getShopStatus(shop);
+        
+        // Status filtri
+        if (currentFilter !== 'all' && status.key !== currentFilter) {
+          return false;
+        }
+
+        // Qidiruv filtri
+        if (query) {
+          const nameMatch = shop.name.toLowerCase().includes(query);
+          const contactMatch = (shop.contactName || '').toLowerCase().includes(query);
+          const phoneMatch = (shop.phone || '').includes(query);
+          const notesMatch = (shop.notes || '').toLowerCase().includes(query);
+          return nameMatch || contactMatch || phoneMatch || notesMatch;
+        }
+
+        return true;
+      });
+
+      shops.forEach((shop) => {
+        const status = getShopStatus(shop);
+
+        const customIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="custom-marker" style="background-color: ${status.color};"></div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+
+        const marker = L.marker([shop.lat, shop.lng], { icon: customIcon }).addTo(map);
+
+        let actions = '';
+        if (shop.type === 'lead') {
+          actions = `<button class="popup-btn btn-partner" onclick="signContract('${shop.id}')">🤝 Shartnoma tuzildi (Mahsulot berildi)</button>`;
+        } else {
+          actions = `
+            <button class="popup-btn btn-delivered" onclick="updateDelivery('${shop.id}')">🔄 Bugun mahsulot topshirildi</button>
+            <button class="popup-btn btn-cancel" onclick="breakContract('${shop.id}')">⚠️ Shartnomani to'xtatish (Ko'k qilish)</button>
+          `;
+        }
+
+        // Qo'ng'iroq qilish tugmasi
+        if (shop.phone) {
+          actions += `<a href="tel:${shop.phone}" class="popup-btn btn-call">📞 Qo'ng'iroq qilish</a>`;
+        }
+
+        // Navigatsiya tugmalari (Yandex va Google)
+        actions += `
+          <div class="nav-btn-row">
+            <a href="https://yandex.com/navi/?whatshere[point]=${shop.lng}%2C${shop.lat}" target="_blank" class="popup-btn btn-nav-yandex">🚗 Yandex</a>
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${shop.lat},${shop.lng}" target="_blank" class="popup-btn btn-nav-google">🗺 Google</a>
+          </div>
+        `;
+
+        actions += `<button class="popup-btn btn-contact" onclick="openEditModal('${shop.id}')">✏️ Ma'lumotlarni tahrirlash</button>`;
+        actions += `<button class="popup-btn btn-del" onclick="deleteShop('${shop.id}')">🗑 O'chirish</button>`;
+
+        let contactInfoHtml = '';
+        if (shop.contactName || shop.phone || shop.notes) {
+          contactInfoHtml = `
+            <div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1; font-size: 0.78rem;">
+              ${shop.contactName ? `<div>👤 <b>Mas'ul:</b> ${shop.contactName}</div>` : ''}
+              ${shop.phone ? `<div>📞 <b>Tel:</b> <a href="tel:${shop.phone}" style="color: #2563eb; font-weight: 600; text-decoration: none;">${shop.phone}</a></div>` : ''}
+              ${shop.notes ? `<div style="color: #64748b; margin-top:2px;">📝 <i>${shop.notes}</i></div>` : ''}
+            </div>
+          `;
+        }
+
+        const popup = `
+          <div style="font-size:0.82rem; min-width: 210px;">
+            <b style="font-size:0.95rem;">${shop.name}</b><br>
+            <span style="color:${status.color}; font-weight:700;">${status.text}</span><br>
+            ${shop.type === 'client' ? `<small style="color:#64748b;">Oxirgi topshirilgan: ${shop.lastDelivery}</small>` : ''}
+            ${contactInfoHtml}
+            <div class="popup-actions">
+              ${actions}
+            </div>
+          </div>
+        `;
+        marker.bindPopup(popup);
+        markers[shop.id] = marker;
+      });
+
+      // Ro'yxatni chiqarish (Filtrlangan holatda)
+      if (filteredShops.length === 0) {
+        listContainer.innerHTML = `<div style="text-align:center; padding:30px 10px; color:#94a3b8; font-size:0.85rem;">Hech qanday do'kon topilmadi.</div>`;
+      } else {
+        filteredShops.forEach((shop) => {
+          const status = getShopStatus(shop);
+          const card = document.createElement('div');
+          card.className = `shop-card ${status.className}`;
+          card.innerHTML = `
+            <div class="shop-card-title">
+              <span>${shop.name}</span>
+              <span style="font-size:0.8rem; color:${status.color};">●</span>
+            </div>
+            ${(shop.contactName || shop.phone) ? `
+              <div class="shop-card-info">
+                ${shop.contactName ? `<span>👤 ${shop.contactName}</span>` : ''}
+                ${shop.phone ? `<span>📞 <a href="tel:${shop.phone}" style="color:inherit; text-decoration:none;">${shop.phone}</a></span>` : ''}
+              </div>
+            ` : ''}
+            ${shop.notes ? `<div class="shop-card-notes">📝 ${shop.notes}</div>` : ''}
+            <div class="shop-card-meta">${status.text}</div>
+          `;
+          card.onclick = () => {
+            closeAllSheets();
+            map.setView([shop.lat, shop.lng], 16);
+            if (markers[shop.id]) markers[shop.id].openPopup();
+          };
+          listContainer.appendChild(card);
+        });
+      }
+    }
+
+    // Yangi do'kon saqlash
+    function saveNewShop() {
+      const name = document.getElementById('shopName').value.trim();
+      const contactName = document.getElementById('contactName').value.trim();
+      const phone = document.getElementById('shopPhone').value.trim();
+      const notes = document.getElementById('shopNotes').value.trim();
+      const type = document.getElementById('shopType').value;
+      const lat = parseFloat(document.getElementById('lat').value);
+      const lng = parseFloat(document.getElementById('lng').value);
+      const deliveryDate = document.getElementById('deliveryDate').value;
+      const yellowDays = parseInt(document.getElementById('yellowDays').value) || 5;
+      const redDays = parseInt(document.getElementById('redDays').value) || 7;
+
+      if (!name || isNaN(lat) || isNaN(lng)) {
+        alert("Iltimos, do'kon nomini yozing va xaritadan joyini belgilang!");
+        return;
+      }
+
+      shops.push({
+        id: Date.now().toString(),
+        name,
+        contactName,
+        phone,
+        notes,
+        type,
+        lat,
+        lng,
+        lastDelivery: deliveryDate,
+        yellowDays,
+        redDays
+      });
+      localStorage.setItem('shops_data', JSON.stringify(shops));
+      closeAllSheets();
+      render();
+    }
+
+    // Shartnoma tuzish
+    window.signContract = function(id) {
+      const today = new Date().toISOString().split('T')[0];
+      shops = shops.map(s => {
+        if (s.id === id) {
+          s.type = 'client';
+          s.lastDelivery = today;
+          s.yellowDays = s.yellowDays || 5;
+          s.redDays = s.redDays || 7;
+        }
+        return s;
+      });
+      localStorage.setItem('shops_data', JSON.stringify(shops));
+      render();
+      if (markers[id]) markers[id].openPopup();
+    };
+
+    // Shartnomani to'xtatish
+    window.breakContract = function(id) {
+      if (confirm("Shartnomani to'xtatmoqchimisiz? Ushbu do'kon yana ko'k (rejadagi) holatga qaytadi.")) {
+        shops = shops.map(s => {
+          if (s.id === id) s.type = 'lead';
+          return s;
+        });
+        localStorage.setItem('shops_data', JSON.stringify(shops));
+        render();
+        if (markers[id]) markers[id].openPopup();
+      }
+    };
+
+    // Mahsulot topshirilgan kunni yangilash
+    window.updateDelivery = function(id) {
+      const today = new Date().toISOString().split('T')[0];
+      shops = shops.map(s => {
+        if (s.id === id) s.lastDelivery = today;
+        return s;
+      });
+      localStorage.setItem('shops_data', JSON.stringify(shops));
+      render();
+      if (markers[id]) markers[id].openPopup();
+    };
+
+    // Butunlay o'chirish
+    window.deleteShop = function(id) {
+      if (confirm("Ushbu do'konni butunlay o'chirib tashlamoqchimisiz?")) {
+        shops = shops.filter(s => s.id !== id);
+        localStorage.setItem('shops_data', JSON.stringify(shops));
+        render();
+      }
+    };
+
+    // Atrofdagi do'konlarni qidirish (Overpass API)
+    async function fetchNearbyShops() {
+      const btn = document.getElementById('findShopsBtn');
+      btn.innerText = "⏳ Qidirilmoqda...";
+      btn.disabled = true;
+
+      const bounds = map.getBounds();
+      const query = `
+        [out:json][timeout:25];
+        (
+          node["shop"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});
+          way["shop"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});
+        );
+        out center;
+      `;
+
+      try {
+        const response = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query });
+        const data = await response.json();
+
+        osmMarkers.forEach(m => map.removeLayer(m));
+        osmMarkers = [];
+
+        let count = 0;
+        data.elements.forEach(el => {
+          const lat = el.lat || (el.center && el.center.lat);
+          const lng = el.lon || (el.center && el.center.lon);
+          const name = el.tags.name || el.tags['name:uz'] || el.tags['name:ru'] || 'Do\'kon (' + (el.tags.shop || 'savdo') + ')';
+
+          const exists = shops.some(s => Math.abs(s.lat - lat) < 0.0003 && Math.abs(s.lng - lng) < 0.0003);
+          if (!exists && lat && lng) {
+            count++;
+            const icon = L.divIcon({
+              className: 'custom-div-icon',
+              html: `<div class="custom-marker" style="background-color: #64748b; width:16px; height:16px;"></div>`,
+              iconSize: [16, 16],
+              iconAnchor: [8, 8]
+            });
+
+            const marker = L.marker([lat, lng], { icon }).addTo(map);
+            marker.bindPopup(`
+              <div style="font-size:0.8rem;">
+                <b>🏢 ${name}</b><br>
+                <small style="color:#64748b;">Xaritadan topilgan do'kon</small>
+                <div class="popup-actions">
+                  <button class="popup-btn btn-partner" onclick="quickAdd('${name.replace(/'/g, "\\'")}', ${lat}, ${lng}, 'client')">🤝 Shartnoma tuzish</button>
+                  <button class="popup-btn btn-cancel" style="background:#3b82f6;" onclick="quickAdd('${name.replace(/'/g, "\\'")}', ${lat}, ${lng}, 'lead')">🔵 Ko'k (Rejaga kiritish)</button>
+                </div>
+              </div>
+            `);
+            osmMarkers.push(marker);
+          }
+        });
+        alert(`Atrofda ${count} ta do'kon topildi (kulrang nuqtalar).`);
+      } catch (err) {
+        alert("Do'konlarni yuklashda xatolik bo'ldi. Internetni tekshiring.");
+      } finally {
+        btn.innerText = "🔍 Atrofdagi do'konlar";
+        btn.disabled = false;
+      }
+    }
+
+    window.quickAdd = function(name, lat, lng, type) {
+      const today = new Date().toISOString().split('T')[0];
+      shops.push({
+        id: Date.now().toString(),
+        name,
+        contactName: '',
+        phone: '',
+        notes: '',
+        type,
+        lat,
+        lng,
+        lastDelivery: today,
+        yellowDays: 5,
+        redDays: 7
+      });
+      localStorage.setItem('shops_data', JSON.stringify(shops));
+      fetchNearbyShops();
+      render();
+    };
+
+    // ==========================================
+    // ZAXIRA NUSXA (BACKUP & EXPORT / IMPORT)
+    // ==========================================
+
+    // JSON eksport
+    window.exportJSON = function() {
+      if (shops.length === 0) {
+        alert("Saqlangan do'konlar mavjud emas!");
+        return;
+      }
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(shops, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const date = new Date().toISOString().split('T')[0];
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `dokonlar_zaxira_${date}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    };
+
+    // Excel (CSV) eksport
+    window.exportCSV = function() {
+      if (shops.length === 0) {
+        alert("Eksport qilish uchun do'konlar mavjud emas!");
+        return;
+      }
+      const headers = ["Do'kon nomi", "Mas'ul shaxs", "Telefon raqam", "Holati", "Oxirgi sana", "Izoh / Qayd", "Kenglik (Lat)", "Uzunlik (Lng)"];
+      const rows = shops.map(s => {
+        const st = getShopStatus(s);
+        const escapeCsv = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
+        return [
+          escapeCsv(s.name),
+          escapeCsv(s.contactName),
+          escapeCsv(s.phone),
+          escapeCsv(st.text),
+          escapeCsv(s.lastDelivery),
+          escapeCsv(s.notes),
+          s.lat,
+          s.lng
+        ].join(",");
+      });
+
+      const BOM = "\uFEFF"; // Excelda o'zbekcha harflar to'g'ri ko'rinishi uchun
+      const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(BOM + [headers.join(","), ...rows].join("\n"));
+      const downloadAnchor = document.createElement('a');
+      const date = new Date().toISOString().split('T')[0];
+      downloadAnchor.setAttribute("href", csvContent);
+      downloadAnchor.setAttribute("download", `dokonlar_royxati_${date}.csv`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    };
+
+    // JSON fayldan import qilish
+    window.handleFileImport = function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (!Array.isArray(importedData)) {
+            alert("Xatolik: Zaxira fayli formati noto'g'ri!");
+            return;
+          }
+
+          const action = confirm(
+            `Faylda ${importedData.length} ta do'kon topildi.\n\n` +
+            `"OK" ni bossangiz: yangi do'konlar hozirgi ro'yxatga qo'shiladi.\n` +
+            `"Bekor qilish" ni bossangiz: bekor bo'ladi.`
+          );
+
+          if (action) {
+            // ID bo'yicha takrorlanishning oldini olish
+            const existingIds = new Set(shops.map(s => s.id));
+            let addedCount = 0;
+            importedData.forEach(item => {
+              if (item.name && item.lat && item.lng) {
+                if (!existingIds.has(item.id)) {
+                  shops.push(item);
+                  addedCount++;
+                }
+              }
+            });
+
+            localStorage.setItem('shops_data', JSON.stringify(shops));
+            render();
+            alert(`Muvaffaqiyatli yuklandi! ${addedCount} ta yangi do'kon qo'shildi.`);
+            closeAllSheets();
+          }
+        } catch (err) {
+          alert("Faylni o'qishda xatolik yuz berdi: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    };
+
+    // Barcha ma'lumotlarni o'chirish
+    window.clearAllData = function() {
+      if (confirm("DIQQAT: Barcha do'konlar o'chib ketadi! Davom ettirilsinmi?")) {
+        shops = [];
+        localStorage.removeItem('shops_data');
+        render();
+        closeAllSheets();
+        alert("Barcha ma'lumotlar tozalandi.");
+      }
+    };
+
+    render();
+  </script>
+</body>
+</html>
