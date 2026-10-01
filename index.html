@@ -88,7 +88,7 @@
       border: 1px solid rgba(255, 255, 255, 0.15);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      padding: 4px 12px;
+      padding: 4px 14px;
       border-radius: 20px;
       font-size: 0.72rem;
       font-weight: 600;
@@ -536,45 +536,115 @@
     }
     .btn-action-alt:active { background: #f1f5f9; }
 
-    .cloud-instruction {
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
-      border-radius: 10px;
-      padding: 10px;
-      font-size: 0.74rem;
-      color: #1e40af;
-      margin-bottom: 10px;
-      line-height: 1.45;
-    }
-    .cloud-instruction ol { margin-left: 16px; margin-top: 4px; }
-    .cloud-instruction li { margin-bottom: 3px; }
-
     .custom-marker {
       width: 22px; height: 22px; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+    }
+
+    /* ============================================================
+       TIZIMGA KIRISH (KOD / PIN-KOD) EKRANI (AUTH OVERLAY)
+       ============================================================ */
+    .auth-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 5000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .auth-card {
+      background: #ffffff;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 340px;
+      padding: 26px 22px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .auth-icon-wrap {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: #eff6ff;
+      color: #2563eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+    .auth-icon-wrap svg { width: 30px; height: 30px; stroke: #2563eb; stroke-width: 2; fill: none; }
+    .auth-card h3 { font-size: 1.2rem; color: #0f172a; font-weight: 800; }
+    .auth-card p { font-size: 0.8rem; color: #64748b; line-height: 1.45; }
+    .auth-input-box input {
+      width: 100%;
+      padding: 13px 14px;
+      border: 2px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-align: center;
+      outline: none;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .auth-input-box input:focus {
+      border-color: #2563eb;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
     }
   </style>
 </head>
 <body>
 
+  <!-- Tizimga kirish (Kompaniya kodi / PIN-kod) oynasi -->
+  <div id="authOverlay" class="auth-overlay" style="display: none;">
+    <div class="auth-card">
+      <div class="auth-icon-wrap">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <h3>Tizimga Kirish</h3>
+      <p>Barcha telefonlarda bitta umumiy do'konlar bazasiga ulanish uchun kompaniya kodingizni kiriting:</p>
+      
+      <div class="auth-input-box">
+        <input type="text" id="companyCodeInput" placeholder="Kodni kiriting (masalan: baraka)" autocapitalize="none" />
+      </div>
+
+      <button class="btn-submit" onclick="loginWithCompanyCode()">Baza ochish</button>
+      <small style="color: #64748b; font-size: 0.72rem; line-height: 1.3;">
+        💡 Barcha xodimlar bir xil kodni kiritsa, barcha do'konlar bir vaqtda hammada aks etadi.
+      </small>
+    </div>
+  </div>
+
   <div id="app-container">
     
-    <!-- Yuqori tezkor qidiruv, GPS & Baza holati paneli -->
+    <!-- Yuqori panel (Atrofdagi do'konlar olib tashlangan, faqat qulay navigatsiya va kod) -->
     <div class="top-bar-wrapper">
       <div class="top-bar">
         <button class="top-btn" onclick="locateMe()">
           <svg viewBox="0 0 24 24"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
           Joylashuvim
         </button>
-        <button class="top-btn" id="findShopsBtn" onclick="fetchNearbyShops()">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Atrofdagi do'konlar
+        <button class="top-btn" onclick="openSheet('backupSheet')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Kod: <span id="topBarCodeText" style="color:#60a5fa; margin-left:2px;">—</span>
         </button>
       </div>
 
-      <!-- Bulutli baza holati ko'rsatkichi -->
+      <!-- Baza holati ko'rsatkichi -->
       <div class="cloud-status-pill" id="cloudStatusPill" onclick="openSheet('backupSheet')">
         <span class="cloud-status-dot"></span>
-        <span id="cloudStatusText">📱 Lokal rejim (Bulutga ulash)</span>
+        <span id="cloudStatusText">Yuklanmoqda...</span>
       </div>
     </div>
 
@@ -783,35 +853,37 @@
       <div class="sheet-header">
         <div class="sheet-grabber"></div>
         <div class="sheet-header-title-row">
-          <h3>☁️ Bulutli Baza & Zaxira</h3>
+          <h3>☁️ Bulutli Baza & Sozlamalar</h3>
           <button class="close-btn" onclick="closeAllSheets()">✕</button>
         </div>
       </div>
       <div class="sheet-content">
         
-        <!-- Bulutli baza sozlamasi kartochkasi -->
-        <div class="backup-section" style="border: 1.5px solid #93c5fd; background: #f0f7ff;">
+        <!-- Kompaniya kodi kartochkasi -->
+        <div class="backup-section" style="border: 1.5px solid #2563eb; background: #eff6ff;">
           <h4>
-            <span>☁️ Google Firebase Bepul Bazasi</span>
+            <span>🔑 Kompaniya Kodi (Baza ID):</span>
+            <span class="status-badge-inline connected" id="activeCodeBadge">—</span>
+          </h4>
+          <p>
+            Har qanday telefondan kirganda aynan shu kod kiritilsa, barcha do'konlar bitta umumiy bazadan ochiladi.
+          </p>
+          <button class="btn-action-alt" style="border-color:#ef4444; color:#ef4444;" onclick="logoutCompanyCode()">🔄 Kodni almashtirish / Chiqish</button>
+        </div>
+
+        <!-- Bulutli baza sozlamasi kartochkasi -->
+        <div class="backup-section" style="border: 1px solid #cbd5e1; background: #f8fafc;">
+          <h4>
+            <span>☁️ Google Firebase Baza</span>
             <span id="cloudStatusBadge" class="status-badge-inline disconnected">Ulanmagan</span>
           </h4>
           <p>
-            Do'konlar internetdagi bepul bazaga avtomatik saqlanadi. Telefon almashtirsangiz ham barcha ma'lumotlar saqlanib turadi va bir vaqtda bir nechta odam ishlashi mumkin.
+            Telefonlar o'rtasida real vaqtda avtomatik sinxronlanish uchun Firebase ulanadi:
           </p>
-
-          <div class="cloud-instruction" id="firebaseGuideBox">
-            <b>Bepul ulash (faqat 1 marta qilinadi):</b>
-            <ol>
-              <li><b>console.firebase.google.com</b> saytiga bepul kiring.</li>
-              <li>"Add project" qilib loyiha yarating.</li>
-              <li><b>Firestore Database</b> bo'limida "Create database" va "Start in test mode" ni tanlang.</li>
-              <li>Loyiha sozlamalarida Web ilova (<code>&lt;/&gt;</code>) qo'shib, <b>firebaseConfig</b> kodini nusxalab quyidagi maydonga joylang:</li>
-            </ol>
-          </div>
 
           <div class="input-group">
             <label>Firebase Konfiguratsiya kodi (JSON yoki matn):</label>
-            <textarea id="firebaseConfigInput" rows="4" placeholder='{"apiKey": "AIzaSy...", "projectId": "mening-dokonlarim", ...}'></textarea>
+            <textarea id="firebaseConfigInput" rows="3" placeholder='{"apiKey": "AIzaSy...", "projectId": "mening-dokonlarim", ...}'></textarea>
           </div>
 
           <div style="display:flex; gap:8px;">
@@ -822,22 +894,22 @@
 
         <!-- Faylli Zaxira -->
         <div class="backup-section">
-          <h4>📥 Faylli Zaxira nusxa olish</h4>
-          <p>Ma'lumotlarni qo'lda fayl qilib yuklab olish (Excel yoki JSON):</p>
+          <h4>📥 Faylli Zaxira (Excel / JSON)</h4>
+          <p>Ma'lumotlarni qo'lda fayl qilib yuklab olish:</p>
           <button class="btn-action-alt" onclick="exportJSON()">💾 JSON Zaxira faylini yuklab olish</button>
           <button class="btn-action-alt" onclick="exportCSV()">📊 Excel (CSV) jadvalini yuklab olish</button>
         </div>
 
         <div class="backup-section">
           <h4>📤 Fayldan qayta tiklash (Import)</h4>
-          <p>Oldin saqlangan JSON zaxira faylini tanlang va do'konlarni qayta tiklang.</p>
+          <p>Oldin saqlangan JSON zaxira faylini tanlab do'konlarni qayta tiklash:</p>
           <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="handleFileImport(event)" />
           <button class="btn-action-alt" style="border-color:#2563eb; color:#2563eb;" onclick="document.getElementById('importFileInput').click()">📂 Zaxira faylini tanlash (JSON)</button>
         </div>
 
         <div class="backup-section" style="border-color: #fecaca; background: #fff5f5;">
           <h4 style="color:#ef4444;">⚠️ Tozalash</h4>
-          <p>Barcha do'konlar ma'lumotlarini o'chirish (avval zaxira nusxa olish tavsiya etiladi).</p>
+          <p>Ushbu kodga tegishli barcha do'konlarni o'chirish:</p>
           <button class="btn-action-alt" style="border-color:#ef4444; color:#ef4444;" onclick="clearAllData()">🗑 Barcha ma'lumotlarni tozalash</button>
         </div>
 
@@ -848,7 +920,58 @@
 
   <script>
     // =========================================================================
-    // 1. ASOSIY XARITA VA O'ZGARUVChILAR
+    // 1. KOMPANIYA KODI (PIN-KOD) TIZIMI
+    // =========================================================================
+    let currentCompanyCode = localStorage.getItem('app_company_code') || '';
+
+    function checkAuth() {
+      if (!currentCompanyCode) {
+        document.getElementById('authOverlay').style.display = 'flex';
+        document.getElementById('companyCodeInput').focus();
+      } else {
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('topBarCodeText').innerText = currentCompanyCode;
+        document.getElementById('activeCodeBadge').innerText = currentCompanyCode;
+        loadCompanyShops();
+      }
+    }
+
+    window.loginWithCompanyCode = function() {
+      const code = document.getElementById('companyCodeInput').value.trim().toLowerCase();
+      if (!code) {
+        alert("Iltimos, kompaniya kodingizni kiriting!");
+        return;
+      }
+      currentCompanyCode = code;
+      localStorage.setItem('app_company_code', code);
+      document.getElementById('authOverlay').style.display = 'none';
+      document.getElementById('topBarCodeText').innerText = code;
+      document.getElementById('activeCodeBadge').innerText = code;
+      loadCompanyShops();
+      initFirebase();
+    };
+
+    window.logoutCompanyCode = function() {
+      if (confirm("Kodni almashtirmoqchimisiz?")) {
+        if (firebaseUnsubscribe) firebaseUnsubscribe();
+        localStorage.removeItem('app_company_code');
+        currentCompanyCode = '';
+        closeAllSheets();
+        checkAuth();
+      }
+    };
+
+    function getStorageKey() {
+      return `shops_data_${currentCompanyCode || 'default'}`;
+    }
+
+    function loadCompanyShops() {
+      shops = JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
+      render();
+    }
+
+    // =========================================================================
+    // 2. ASOSIY XARITA VA O'ZGARUVChILAR
     // =========================================================================
     const map = L.map('map', { zoomControl: false }).setView([40.7821, 72.3442], 14);
     
@@ -858,14 +981,11 @@
     }).addTo(map);
 
     let markers = {};
-    let osmMarkers = [];
-    let shops = JSON.parse(localStorage.getItem('shops_data') || '[]');
+    let shops = [];
     let currentFilter = 'all';
 
-    // Firebase o'zgaruvchilari
     let db = null;
     let firebaseUnsubscribe = null;
-    let isFirebaseActive = false;
 
     document.getElementById('deliveryDate').value = new Date().toISOString().split('T')[0];
 
@@ -874,7 +994,6 @@
       document.getElementById('clientInputs').style.display = (type === 'client') ? 'block' : 'none';
     }
 
-    // Modal boshqaruvi
     function openSheet(id) {
       closeAllSheets();
       document.getElementById(id).classList.add('open');
@@ -906,7 +1025,6 @@
       openSheet('addSheet');
     }
 
-    // Do'konni to'liq tahrirlash modali
     window.openEditModal = function(id) {
       const shop = shops.find(s => s.id === id);
       if (!shop) return;
@@ -923,42 +1041,38 @@
     };
 
     // =========================================================================
-    // 2. MA'LUMOTLARNI SAQLASH (FIREBASE + LOCALSTORAGE HYBRID)
+    // 3. MA'LUMOTLARNI SAQLASH (KOD BO'YIChA BIRIKTIRILGAN BAZA)
     // =========================================================================
-    
-    // Yagona saqlash funksiyasi: ham bulutga, ham telefonga avtomatik yozadi
+
     async function syncShopSave(shop) {
-      // 1. Lokal xotiraga yozish (offline kesh)
       const idx = shops.findIndex(s => s.id === shop.id);
       if (idx >= 0) shops[idx] = shop;
       else shops.push(shop);
-      localStorage.setItem('shops_data', JSON.stringify(shops));
+      localStorage.setItem(getStorageKey(), JSON.stringify(shops));
       render();
 
-      // 2. Agar Firebase ulangan bo'lsa, Google bulutiga yozish
-      if (db) {
+      if (db && currentCompanyCode) {
         try {
           updateCloudPill('syncing', 'Bulutga saqlanmoqda...');
-          await db.collection("shops").doc(shop.id).set(shop);
-          updateCloudPill('online', '🟢 Bulutga saqlandi');
+          await db.collection("companies").doc(currentCompanyCode).collection("shops").doc(shop.id).set(shop);
+          updateCloudPill('online', `🟢 Ulangan: ${currentCompanyCode}`);
         } catch (err) {
           console.error("Firebase save error:", err);
-          updateCloudPill('online', '⚠️ Bulutga ulanishda xato');
+          updateCloudPill('online', '⚠️ Bulut xatosi');
         }
       }
     }
 
-    // Yagona o'chirish funksiyasi
     async function syncShopDelete(id) {
       shops = shops.filter(s => s.id !== id);
-      localStorage.setItem('shops_data', JSON.stringify(shops));
+      localStorage.setItem(getStorageKey(), JSON.stringify(shops));
       render();
 
-      if (db) {
+      if (db && currentCompanyCode) {
         try {
           updateCloudPill('syncing', 'Bulutdan o\'chirilmoqda...');
-          await db.collection("shops").doc(id).delete();
-          updateCloudPill('online', '🟢 Bulutda yangilandi');
+          await db.collection("companies").doc(currentCompanyCode).collection("shops").doc(id).delete();
+          updateCloudPill('online', `🟢 Ulangan: ${currentCompanyCode}`);
         } catch (err) {
           console.error("Firebase delete error:", err);
         }
@@ -994,6 +1108,7 @@
         lastDelivery: deliveryDate,
         yellowDays,
         redDays,
+        companyCode: currentCompanyCode,
         updatedAt: new Date().toISOString()
       };
 
@@ -1077,7 +1192,7 @@
     };
 
     // =========================================================================
-    // 3. GOOGLE FIREBASE INITIALIZATION & REALTIME SYNC
+    // 4. GOOGLE FIREBASE INITIALIZATION & REALTIME SYNC (PER-COMPANY)
     // =========================================================================
 
     function updateCloudPill(status, text) {
@@ -1090,7 +1205,7 @@
 
       if (status === 'online') {
         badge.className = 'status-badge-inline connected';
-        badge.innerText = '🟢 Ulangan (Faol)';
+        badge.innerText = '🟢 Ulangan';
       } else {
         badge.className = 'status-badge-inline disconnected';
         badge.innerText = '⚪ Ulanmagan';
@@ -1100,7 +1215,7 @@
     function initFirebase() {
       const savedConfig = localStorage.getItem('firebase_config');
       if (!savedConfig) {
-        updateCloudPill('offline', '📱 Lokal rejim (Bulutga ulash)');
+        updateCloudPill('offline', `📱 Lokal rejim: ${currentCompanyCode || 'kod kiritilmagan'}`);
         return;
       }
 
@@ -1110,50 +1225,49 @@
           firebase.initializeApp(config);
         }
         db = firebase.firestore();
-        isFirebaseActive = true;
-        updateCloudPill('online', '🟢 Bulutga ulangan');
         document.getElementById('firebaseConfigInput').value = JSON.stringify(config, null, 2);
 
-        // Realtime listener: Google Cloud bazasi o'zgarsa, hamma telefonlarda darhol yangilanadi!
-        if (firebaseUnsubscribe) firebaseUnsubscribe();
-        firebaseUnsubscribe = db.collection("shops").onSnapshot((snapshot) => {
-          let cloudShops = [];
-          snapshot.forEach((doc) => {
-            cloudShops.push(doc.data());
-          });
+        if (!currentCompanyCode) return;
 
-          if (cloudShops.length > 0) {
-            shops = cloudShops;
-            localStorage.setItem('shops_data', JSON.stringify(shops));
-            render();
-          } else if (shops.length > 0) {
-            // Agar bulut bo'sh bo'lsa, mavjud lokal do'konlarni bulutga nusxalash
-            uploadLocalShopsToFirebase();
-          }
-        }, (err) => {
-          console.error("Firebase snapshot error:", err);
-          updateCloudPill('offline', '⚠️ Bulut xatosi');
-        });
+        updateCloudPill('online', `🟢 Ulangan: ${currentCompanyCode}`);
+
+        // Kompaniya kodi bo'yicha jonli tinglovchi
+        if (firebaseUnsubscribe) firebaseUnsubscribe();
+        firebaseUnsubscribe = db.collection("companies").doc(currentCompanyCode).collection("shops")
+          .onSnapshot((snapshot) => {
+            let cloudShops = [];
+            snapshot.forEach((doc) => {
+              cloudShops.push(doc.data());
+            });
+
+            if (cloudShops.length > 0) {
+              shops = cloudShops;
+              localStorage.setItem(getStorageKey(), JSON.stringify(shops));
+              render();
+            } else if (shops.length > 0) {
+              uploadLocalShopsToFirebase();
+            }
+          }, (err) => {
+            console.error("Firebase snapshot error:", err);
+            updateCloudPill('offline', '⚠️ Bulut xatosi');
+          });
 
       } catch (err) {
         console.error("Firebase init error:", err);
-        updateCloudPill('offline', '📱 Lokal rejim');
+        updateCloudPill('offline', `📱 Lokal rejim: ${currentCompanyCode}`);
       }
     }
 
-    // Mavjud do'konlarni bulutga ommaviy yuklash
     async function uploadLocalShopsToFirebase() {
-      if (!db || shops.length === 0) return;
+      if (!db || !currentCompanyCode || shops.length === 0) return;
       const batch = db.batch();
       shops.forEach((shop) => {
-        const docRef = db.collection("shops").doc(shop.id);
+        const docRef = db.collection("companies").doc(currentCompanyCode).collection("shops").doc(shop.id);
         batch.set(docRef, shop);
       });
       await batch.commit();
-      console.log("Local shops uploaded to Firebase.");
     }
 
-    // Sozlamalardan ulanish
     window.connectFirebase = function() {
       let raw = document.getElementById('firebaseConfigInput').value.trim();
       if (!raw) {
@@ -1172,7 +1286,7 @@
         try {
           parsed = (new Function(`return ${raw};`))();
         } catch (e2) {
-          alert("Konfiguratsiya formati noto'g'ri. Iltimos, Firebase'dan olingan matnni to'liq joylang.");
+          alert("Konfiguratsiya formati noto'g'ri. Iltimos, Firebase kodini to'liq joylang.");
           return;
         }
       }
@@ -1183,26 +1297,25 @@
       }
 
       localStorage.setItem('firebase_config', JSON.stringify(parsed));
-      alert("Sozlamalar saqlandi! Baza ulanmoqda...");
+      alert("Firebase ulanmoqda...");
       initFirebase();
       uploadLocalShopsToFirebase();
       closeAllSheets();
     };
 
     window.disconnectFirebase = function() {
-      if (confirm("Bulutli bazadan uzmoqchimisiz? Ma'lumotlar faqat telefonda qoladi.")) {
+      if (confirm("Bulutli bazadan uzmoqchimisiz?")) {
         localStorage.removeItem('firebase_config');
         if (firebaseUnsubscribe) firebaseUnsubscribe();
         db = null;
-        isFirebaseActive = false;
-        updateCloudPill('offline', '📱 Lokal rejim');
+        updateCloudPill('offline', `📱 Lokal rejim: ${currentCompanyCode}`);
         document.getElementById('firebaseConfigInput').value = '';
-        alert("Bulutli baza uzildi. Dastur lokal xotirada ishlamoqda.");
+        alert("Bulutli baza uzildi.");
       }
     };
 
     // =========================================================================
-    // 4. QIDIRUV, FILTR VA RENDERING
+    // 5. QIDIRUV, FILTR VA RENDERING
     // =========================================================================
 
     window.setFilter = function(filter, element) {
@@ -1433,90 +1546,6 @@
     }
 
     // =========================================================================
-    // 5. ATROFDAGI DO'KONLARNI QIDIRISH (OVERPASS API)
-    // =========================================================================
-    async function fetchNearbyShops() {
-      const btn = document.getElementById('findShopsBtn');
-      btn.innerText = "⏳ Qidirilmoqda...";
-      btn.disabled = true;
-
-      const bounds = map.getBounds();
-      const query = `
-        [out:json][timeout:25];
-        (
-          node["shop"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});
-          way["shop"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});
-        );
-        out center;
-      `;
-
-      try {
-        const response = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query });
-        const data = await response.json();
-
-        osmMarkers.forEach(m => map.removeLayer(m));
-        osmMarkers = [];
-
-        let count = 0;
-        data.elements.forEach(el => {
-          const lat = el.lat || (el.center && el.center.lat);
-          const lng = el.lon || (el.center && el.center.lon);
-          const name = el.tags.name || el.tags['name:uz'] || el.tags['name:ru'] || 'Do\'kon (' + (el.tags.shop || 'savdo') + ')';
-
-          const exists = shops.some(s => Math.abs(s.lat - lat) < 0.0003 && Math.abs(s.lng - lng) < 0.0003);
-          if (!exists && lat && lng) {
-            count++;
-            const icon = L.divIcon({
-              className: 'custom-div-icon',
-              html: `<div class="custom-marker" style="background-color: #64748b; width:16px; height:16px;"></div>`,
-              iconSize: [16, 16],
-              iconAnchor: [8, 8]
-            });
-
-            const marker = L.marker([lat, lng], { icon }).addTo(map);
-            marker.bindPopup(`
-              <div style="font-size:0.82rem; padding:6px 4px;">
-                <b style="font-size:0.95rem; color:#0f172a;">🏢 ${name}</b><br>
-                <small style="color:#64748b;">Xaritadan topilgan do'kon</small>
-                <div style="display:flex; flex-direction:column; gap:5px; margin-top:8px;">
-                  <button class="p-btn p-btn-status-lead" onclick="quickAdd('${name.replace(/'/g, "\\'")}', ${lat}, ${lng}, 'client')">🤝 Shartnoma tuzish</button>
-                  <button class="p-btn" style="background:#e2e8f0; color:#334155;" onclick="quickAdd('${name.replace(/'/g, "\\'")}', ${lat}, ${lng}, 'lead')">🔵 Rejaga kiritish</button>
-                </div>
-              </div>
-            `);
-            osmMarkers.push(marker);
-          }
-        });
-        alert(`Atrofda ${count} ta do'kon topildi (kulrang nuqtalar).`);
-      } catch (err) {
-        alert("Do'konlarni yuklashda xatolik bo'ldi. Internetni tekshiring.");
-      } finally {
-        btn.innerHTML = `<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Atrofdagi do'konlar`;
-        btn.disabled = false;
-      }
-    }
-
-    window.quickAdd = function(name, lat, lng, type) {
-      const today = new Date().toISOString().split('T')[0];
-      const newShop = {
-        id: Date.now().toString(),
-        name,
-        contactName: '',
-        phone: '',
-        notes: '',
-        type,
-        lat,
-        lng,
-        lastDelivery: today,
-        yellowDays: 5,
-        redDays: 7,
-        updatedAt: new Date().toISOString()
-      };
-      syncShopSave(newShop);
-      fetchNearbyShops();
-    };
-
-    // =========================================================================
     // 6. ZAXIRA NUSXA VA FAYLLI EKSPORT / IMPORT
     // =========================================================================
 
@@ -1529,7 +1558,7 @@
       const downloadAnchor = document.createElement('a');
       const date = new Date().toISOString().split('T')[0];
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `dokonlar_zaxira_${date}.json`);
+      downloadAnchor.setAttribute("download", `dokonlar_${currentCompanyCode}_${date}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -1561,7 +1590,7 @@
       const downloadAnchor = document.createElement('a');
       const date = new Date().toISOString().split('T')[0];
       downloadAnchor.setAttribute("href", csvContent);
-      downloadAnchor.setAttribute("download", `dokonlar_royxati_${date}.csv`);
+      downloadAnchor.setAttribute("download", `dokonlar_${currentCompanyCode}_${date}.csv`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -1591,16 +1620,17 @@
             importedData.forEach(item => {
               if (item.name && item.lat && item.lng) {
                 if (!existingIds.has(item.id)) {
+                  item.companyCode = currentCompanyCode;
                   shops.push(item);
-                  if (db) {
-                    db.collection("shops").doc(item.id).set(item);
+                  if (db && currentCompanyCode) {
+                    db.collection("companies").doc(currentCompanyCode).collection("shops").doc(item.id).set(item);
                   }
                   addedCount++;
                 }
               }
             });
 
-            localStorage.setItem('shops_data', JSON.stringify(shops));
+            localStorage.setItem(getStorageKey(), JSON.stringify(shops));
             render();
             alert(`Muvaffaqiyatli yuklandi! ${addedCount} ta yangi do'kon qo'shildi.`);
             closeAllSheets();
@@ -1614,12 +1644,12 @@
     };
 
     window.clearAllData = function() {
-      if (confirm("DIQQAT: Barcha do'konlar o'chib ketadi! Davom ettirilsinmi?")) {
-        if (db) {
-          shops.forEach(s => db.collection("shops").doc(s.id).delete());
+      if (confirm(`DIQQAT: "${currentCompanyCode}" kodiga tegishli barcha do'konlar o'chib ketadi! Davom ettirilsinmi?`)) {
+        if (db && currentCompanyCode) {
+          shops.forEach(s => db.collection("companies").doc(currentCompanyCode).collection("shops").doc(s.id).delete());
         }
         shops = [];
-        localStorage.removeItem('shops_data');
+        localStorage.removeItem(getStorageKey());
         render();
         closeAllSheets();
         alert("Barcha ma'lumotlar tozalandi.");
@@ -1627,7 +1657,7 @@
     };
 
     // Boshlang'ich yuklash
-    render();
+    checkAuth();
     initFirebase();
   </script>
 </body>
